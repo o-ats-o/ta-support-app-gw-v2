@@ -30,6 +30,7 @@ export default function TrendChartPanel({
 
   return (
     <div>
+      <div className="font-semibold text-md mb-2">時間推移グラフ</div>
       <ChartSeriesSelector value={series} onChange={setSeries} />
 
       <div className="mt-2 flex justify-end mt-6 mr-4">
