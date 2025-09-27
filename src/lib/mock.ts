@@ -1,4 +1,5 @@
 import type { DashboardData, GroupId } from "./types";
+import { GROUP_COLORS } from "./types";
 
 const groupIds: GroupId[] = ["A", "B", "C", "D", "E", "F", "G"];
 
@@ -6,16 +7,7 @@ export const dashboardMock: DashboardData = {
   groups: groupIds.map((id, idx) => ({
     id,
     name: `Group ${id}`,
-    color: [
-      "#ef4444", // A: red
-      "#f59e0b", // B: amber
-      "#16a34a", // C: green
-      "#2563eb", // D: blue
-      "#7c3aed", // E: violet
-      "#0ea5e9", // F: sky
-      "#ec4899", // G: pink
-      "#a3e635", // H: lime
-    ][idx % 8],
+    color: GROUP_COLORS[id],
     metrics: {
       speechCount: [3, 3, 8, 1, 3, 3, 1][idx],
       speechDelta: [+3, +2, +7, -2, +3, +2, -2][idx],
