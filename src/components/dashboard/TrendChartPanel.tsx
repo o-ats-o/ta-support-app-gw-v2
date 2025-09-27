@@ -44,7 +44,7 @@ export default function TrendChartPanel({
         </button>
       </div>
 
-      <div className="mt-3 h-[320px]">
+      <div className="mt-3 h-[350px]">
         <MultiLineChart
           data={data.timeseries[series]}
           colors={colors}
