@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 import TrendChartPanel from "./TrendChartPanel";
 import MiroWorkDetail from "./MiroWorkDetail";
+import ConversationLogs from "./ConversationLogs";
 
 type Props = {
   data: DashboardData;
@@ -25,7 +26,7 @@ export function GroupDetail({ data, selected }: Props) {
           <TabsTrigger value="scenario">声かけシナリオ</TabsTrigger>
           <TabsTrigger value="miro">Miro作業量詳細</TabsTrigger>
         </TabsList>
-        <TabsContent value="trend" className="pt-8">
+        <TabsContent value="trend" className="pt-4">
           <TrendChartPanel
             data={data}
             groups={data.groups}
@@ -37,9 +38,7 @@ export function GroupDetail({ data, selected }: Props) {
           <MiroWorkDetail data={data} selected={selected} />
         </TabsContent>
         <TabsContent value="logs" className="pt-4">
-          <div className="text-sm text-muted-foreground">
-            ダミー: 会話履歴（未実装）
-          </div>
+          <ConversationLogs data={data} selected={selected} />
         </TabsContent>
         <TabsContent value="scenario" className="pt-4">
           <div className="text-sm text-muted-foreground">
