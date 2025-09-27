@@ -55,16 +55,17 @@ export default function MultiLineChart({
         <XAxis
           dataKey="time"
           stroke={axisColor}
-          tick={{ fontSize: 16, fill: tickColor }}
-          tickLine={false}
+          tick={{ fontSize: 16, fill: tickColor, dy: 6 }}
+          tickLine={true}
           axisLine={{ stroke: axisColor, strokeWidth: 3 }}
+          tickMargin={8}
         />
         <YAxis
           stroke={axisColor}
           allowDecimals
           domain={yDomain ?? [0, "dataMax + 1"]}
           tick={{ fontSize: 16, fill: tickColor }}
-          tickLine={false}
+          tickLine={true}
           axisLine={{ stroke: axisColor, strokeWidth: 3 }}
         />
         <ReTooltip
@@ -83,7 +84,7 @@ export default function MultiLineChart({
             toggleSeries(key);
           }}
           formatter={(value: string | number) => `Group ${String(value)}`}
-          wrapperStyle={{ cursor: "pointer" }}
+          wrapperStyle={{ cursor: "pointer", paddingTop: 24 }}
           verticalAlign="bottom"
         />
         {groups.map((g) => (
