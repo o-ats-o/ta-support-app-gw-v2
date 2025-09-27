@@ -11,6 +11,7 @@ import {
   Line,
   CartesianGrid,
 } from "recharts";
+import CustomTooltip from "./CustomTooltip";
 import type { GroupInfo, TimeSeriesPoint } from "@/lib/types";
 
 type Props = {
@@ -37,6 +38,8 @@ export default function MultiLineChart({
   const axisColor = "#6b5b4b"; // 軸ライン色
   const tickColor = "#6b6b6b"; // 目盛文字色
   const gridColor = "#d1d5db"; // グリッド色（薄いグレー）
+
+  // ツールチップは別ファイルの CustomTooltip を使用
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -68,6 +71,7 @@ export default function MultiLineChart({
           cursor={{ strokeDasharray: "3 3" }}
           position={{ y: 8 }}
           wrapperStyle={{ zIndex: 9999 }}
+          content={<CustomTooltip />}
         />
         <Legend
           onClick={(e) =>
