@@ -65,7 +65,7 @@ function GroupRow({
           <span className="font-medium">{g.name}</span>
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-8 justify-items-center text-center w-fit mx-auto">
         <Metric
           label="発話"
           value={`${g.metrics.speechCount}回`}

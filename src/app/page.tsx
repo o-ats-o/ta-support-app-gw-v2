@@ -19,7 +19,7 @@ export default function Home() {
         </button>
       </header>
 
-      <main className="p-4 grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-4">
+      <main className="p-4 grid grid-cols-1 lg:grid-cols-[520px_minmax(0,1fr)] gap-4">
         <div className="lg:sticky lg:top-4 self-start">
           <GroupList
             data={data}
