@@ -180,11 +180,11 @@ export default function RecommendGroupList({
         </ul>
       </div>
 
-      <div className="mt-4 px-3 pb-3">
-        <div className="text-sm text-muted-foreground bg-muted rounded-md px-3 py-2 mb-2">
+      <div className="pb-3 -mt-2">
+        <div className="text-sm text-muted-foreground bg-muted px-3 py-2 mb-2">
           その他のグループ
         </div>
-        <ul className="space-y-1 -mt-1">
+        <ul className="space-y-1 px-3">
           {others.map((g) => (
             <li key={g.id}>
               <GroupRow
