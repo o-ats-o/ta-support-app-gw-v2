@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 import TrendChartPanel from "./TrendChartPanel";
+import MiroWorkDetail from "./MiroWorkDetail";
 
 type Props = {
   data: DashboardData;
@@ -33,9 +34,7 @@ export function GroupDetail({ data, selected }: Props) {
           />
         </TabsContent>
         <TabsContent value="miro" className="pt-4">
-          <div className="text-sm text-muted-foreground">
-            ダミー: Miro作業量詳細（未実装）
-          </div>
+          <MiroWorkDetail data={data} selected={selected} />
         </TabsContent>
         <TabsContent value="logs" className="pt-4">
           <div className="text-sm text-muted-foreground">
