@@ -89,9 +89,9 @@ function GroupRow({
 
 export function GroupList({ data, selectedId, onSelect }: Props) {
   return (
-    <Card className="p-3 h-full">
+    <Card className="h-full">
       <GroupListHeader />
-      <ul className="space-y-1 -mt-2">
+      <ul className="space-y-1 px-3 -mt-2">
         {data.groups.map((g) => (
           <li key={g.id}>
             <GroupRow

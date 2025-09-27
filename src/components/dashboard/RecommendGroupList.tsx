@@ -156,15 +156,15 @@ export default function RecommendGroupList({
   const others = data.groups.filter((g) => !recommendSet.has(g.id));
 
   return (
-    <Card className="p-3 h-full">
+    <Card className="h-full">
       <GroupListHeader />
 
-      <div className="mt-2">
-        <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
+      <div className="-mt-6">
+        <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 mb-2">
           <Star className="h-4 w-4" />
           <span className="text-sm font-medium">優先観察推薦グループ</span>
         </div>
-        <ul className="space-y-2">
+        <ul className="space-y-2 px-3">
           {recommended.map((g) => (
             <li key={g.id}>
               <GroupRow
@@ -180,7 +180,7 @@ export default function RecommendGroupList({
         </ul>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 px-3 pb-3">
         <div className="text-sm text-muted-foreground bg-muted rounded-md px-3 py-2 mb-2">
           その他のグループ
         </div>

@@ -14,7 +14,7 @@ export default function GroupListHeader({
 }: Props) {
   return (
     <div>
-      <div className="flex items-center justify-between px-1 pt-1 pb-0 mb-4 ">
+      <div className="flex items-center justify-between px-1 pt-1 pb-0 mb-4 px-3">
         <div className="flex items-center gap-2 font-semibold">
           <Users className="h-4 w-4 text-muted-foreground" />
           {title}
