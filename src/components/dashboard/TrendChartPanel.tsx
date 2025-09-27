@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 import dynamic from "next/dynamic";
+import { Card } from "@/components/ui/card";
 import { ChartSeriesSelector } from "@/components/ui/chart-series-selector";
 
 const MultiLineChart = dynamic(() => import("./charts/MultiLineChart"), {
@@ -29,11 +30,13 @@ export default function TrendChartPanel({
   const [onlySelected, setOnlySelected] = useState(false);
 
   return (
-    <div>
-      <div className="font-semibold text-md mb-2">時間推移グラフ</div>
-      <ChartSeriesSelector value={series} onChange={setSeries} />
+    <Card className="p-4 h-[500px]">
+      <div className="font-semibold text-md">時間推移グラフ</div>
+      <div className="-mt-3">
+        <ChartSeriesSelector value={series} onChange={setSeries} />
+      </div>
 
-      <div className="mt-2 flex justify-end mt-6 mr-4">
+      <div className="mt-2 flex justify-end mr-4">
         <button
           type="button"
           className={`px-3 py-2 rounded-md text-xs border ${
@@ -47,7 +50,7 @@ export default function TrendChartPanel({
         </button>
       </div>
 
-      <div className="mt-3 h-[360px]">
+      <div className="-mt-4 h-[360px]">
         <MultiLineChart
           data={data.timeseries[series]}
           colors={colors}
@@ -55,6 +58,6 @@ export default function TrendChartPanel({
           yDomain={series === "sentiment" ? [-1, 1] : undefined}
         />
       </div>
-    </div>
+    </Card>
   );
 }
