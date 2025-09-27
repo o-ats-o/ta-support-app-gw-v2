@@ -16,7 +16,7 @@ export function ChartSeriesSelector({ value, onChange }: Props) {
         onClick={() => onChange("speech")}
       >
         <span
-          className={`text-sm font-semibold ${
+          className={`text-sm ${
             value === "speech" ? "text-emerald-700" : "text-muted-foreground"
           }`}
         >
@@ -34,7 +34,7 @@ export function ChartSeriesSelector({ value, onChange }: Props) {
         onClick={() => onChange("sentiment")}
       >
         <span
-          className={`text-sm font-semibold ${
+          className={`text-sm ${
             value === "sentiment" ? "text-emerald-700" : "text-muted-foreground"
           }`}
         >
@@ -52,7 +52,7 @@ export function ChartSeriesSelector({ value, onChange }: Props) {
         onClick={() => onChange("miroOps")}
       >
         <span
-          className={`text-sm font-semibold ${
+          className={`text-sm ${
             value === "miroOps" ? "text-emerald-700" : "text-muted-foreground"
           }`}
         >

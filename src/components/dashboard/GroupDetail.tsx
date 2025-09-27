@@ -20,9 +20,9 @@ export function GroupDetail({ data, selected }: Props) {
       <Tabs defaultValue="trend" className="mt-3">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="trend">時間推移グラフ</TabsTrigger>
-          <TabsTrigger value="miro">Miro作業量詳細</TabsTrigger>
           <TabsTrigger value="logs">会話履歴</TabsTrigger>
           <TabsTrigger value="scenario">声かけシナリオ</TabsTrigger>
+          <TabsTrigger value="miro">Miro作業量詳細</TabsTrigger>
         </TabsList>
         <TabsContent value="trend" className="pt-8">
           <TrendChartPanel
