@@ -7,14 +7,15 @@ export const dashboardMock: DashboardData = {
     id,
     name: `Group ${id}`,
     color: [
-      "#ef4444",
-      "#f59e0b",
-      "#22c55e",
-      "#3b82f6",
-      "#6366f1",
-      "#8b5cf6",
-      "#10b981",
-    ][idx % 7],
+      "#ef4444", // A: red
+      "#f59e0b", // B: amber
+      "#16a34a", // C: green
+      "#2563eb", // D: blue
+      "#7c3aed", // E: violet
+      "#0ea5e9", // F: sky
+      "#ec4899", // G: pink
+      "#a3e635", // H: lime
+    ][idx % 8],
     metrics: {
       speechCount: [3, 3, 8, 1, 3, 3, 1][idx],
       speechDelta: [+3, +2, +7, -2, +3, +2, -2][idx],
