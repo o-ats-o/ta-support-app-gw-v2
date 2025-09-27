@@ -74,10 +74,15 @@ export default function MultiLineChart({
           content={<CustomTooltip />}
         />
         <Legend
-          onClick={(e) =>
-            toggleSeries((e as any)?.dataKey ?? (e as any)?.value)
-          }
-          formatter={(value: any) => `Group ${String(value)}`}
+          onClick={(e: unknown) => {
+            const key =
+              (e as { dataKey?: string | number; value?: string | number })
+                ?.dataKey ??
+              (e as { dataKey?: string | number; value?: string | number })
+                ?.value;
+            toggleSeries(key);
+          }}
+          formatter={(value: string | number) => `Group ${String(value)}`}
           wrapperStyle={{ cursor: "pointer" }}
           verticalAlign="bottom"
         />

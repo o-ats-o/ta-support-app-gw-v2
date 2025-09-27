@@ -11,8 +11,6 @@ type Props = {
 };
 
 export function GroupDetail({ data, selected }: Props) {
-  const colors = Object.fromEntries(data.groups.map((g) => [g.id, g.color]));
-
   return (
     <Card className="p-3 h-full">
       <div className="flex items-center gap-2">
