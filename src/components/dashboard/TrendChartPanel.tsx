@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 import dynamic from "next/dynamic";
+import { ChartSeriesSelector } from "@/components/ui/chart-series-selector";
 
 const MultiLineChart = dynamic(() => import("./charts/MultiLineChart"), {
   ssr: false,
@@ -29,45 +30,18 @@ export default function TrendChartPanel({
 
   return (
     <div>
-      <div className="flex gap-2">
+      <ChartSeriesSelector value={series} onChange={setSeries} />
+
+      <div className="mt-2 flex justify-end">
         <button
           type="button"
           className={`px-3 py-1 rounded-md text-xs ${
-            series === "speech" ? "bg-secondary" : "border"
+            onlySelected ? "bg-secondary" : "border"
           }`}
-          onClick={() => setSeries("speech")}
+          onClick={() => setOnlySelected((v) => !v)}
         >
-          発話回数
+          {onlySelected ? "全グループを表示" : "選択グループを表示"}
         </button>
-        <button
-          type="button"
-          className={`px-3 py-1 rounded-md text-xs ${
-            series === "sentiment" ? "bg-secondary" : "border"
-          }`}
-          onClick={() => setSeries("sentiment")}
-        >
-          感情
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1 rounded-md text-xs ${
-            series === "miroOps" ? "bg-secondary" : "border"
-          }`}
-          onClick={() => setSeries("miroOps")}
-        >
-          Miro作業量
-        </button>
-        <div className="ml-auto">
-          <button
-            type="button"
-            className={`px-3 py-1 rounded-md text-xs ${
-              onlySelected ? "bg-secondary" : "border"
-            }`}
-            onClick={() => setOnlySelected((v) => !v)}
-          >
-            {onlySelected ? "全グループを表示" : "選択グループを表示"}
-          </button>
-        </div>
       </div>
 
       <div className="mt-3 h-[320px]">
