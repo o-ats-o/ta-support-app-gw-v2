@@ -94,7 +94,7 @@ export default function MultiLineChart({
             dataKey={g.id}
             stroke={colors[g.id]}
             dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
-            activeDot={{ r: 5, strokeWidth: 2, fill: "#fff" }}
+            activeDot={{ r: 5, strokeWidth: 2, fill: "#000" }}
             strokeWidth={2}
             strokeLinecap="round"
             isAnimationActive={false}
