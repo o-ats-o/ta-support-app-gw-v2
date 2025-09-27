@@ -12,7 +12,7 @@ export default function DashboardClient() {
 
   return (
     <div className="min-h-screen">
-      <header className="h-12 bg-emerald-600 text-white flex items-center px-4 font-semibold w-full">
+      <header className="sticky top-0 z-50 h-12 bg-emerald-600 text-white flex items-center px-4 font-semibold w-full">
         TA機関指導支援システム
         <button className="ml-auto text-sm bg-white/15 rounded px-3 py-1">
           更新
@@ -20,14 +20,16 @@ export default function DashboardClient() {
       </header>
 
       <main className="p-4 grid grid-cols-1 lg:grid-cols-[520px_minmax(0,1fr)] gap-2">
-        <div className="lg:sticky lg:top-4 self-start">
+        <div>
           <GroupList
             data={data}
             selectedId={selectedId}
             onSelect={setSelectedId}
           />
         </div>
-        <GroupDetail data={data} selected={selected} />
+        <div className="lg:sticky lg:top-16 self-start">
+          <GroupDetail data={data} selected={selected} />
+        </div>
       </main>
     </div>
   );
