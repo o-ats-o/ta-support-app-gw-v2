@@ -32,10 +32,10 @@ export default function TrendChartPanel({
     <div>
       <ChartSeriesSelector value={series} onChange={setSeries} />
 
-      <div className="mt-2 flex justify-end">
+      <div className="mt-2 flex justify-end mt-6 mr-4">
         <button
           type="button"
-          className={`px-3 py-1 rounded-md text-xs ${
+          className={`px-3 py-2 rounded-md text-xs ${
             onlySelected ? "bg-secondary" : "border"
           }`}
           onClick={() => setOnlySelected((v) => !v)}

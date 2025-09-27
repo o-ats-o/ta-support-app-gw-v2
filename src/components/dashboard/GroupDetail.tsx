@@ -24,7 +24,7 @@ export function GroupDetail({ data, selected }: Props) {
           <TabsTrigger value="logs">会話履歴</TabsTrigger>
           <TabsTrigger value="scenario">声かけシナリオ</TabsTrigger>
         </TabsList>
-        <TabsContent value="trend" className="pt-4">
+        <TabsContent value="trend" className="pt-8">
           <TrendChartPanel
             data={data}
             groups={data.groups}
