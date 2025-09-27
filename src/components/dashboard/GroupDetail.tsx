@@ -52,7 +52,6 @@ export function GroupDetail({ data, selected }: Props) {
     <Card className="p-3 h-full">
       <div className="flex items-center gap-2">
         <span className="font-semibold text-base">{selected.name}</span>
-        <span className="text-xs text-muted-foreground">（注目グループ）</span>
       </div>
 
       <Tabs defaultValue="trend" className="mt-3">
