@@ -89,11 +89,11 @@ function GroupRow({
 export function GroupList({ data, selectedId, onSelect }: Props) {
   return (
     <Card className="p-3 h-full">
-      <div className="flex items-center justify-between px-1 py-1">
+      <div className="flex items-center justify-between px-1 pt-1 pb-0">
         <div className="font-semibold">グループ一覧</div>
         <div className="text-sm text-muted-foreground">11:30〜</div>
       </div>
-      <Separator className="my-2" />
+      <Separator className="my-0" />
       <div className="space-y-1">
         {data.groups.map((g) => (
           <GroupRow
