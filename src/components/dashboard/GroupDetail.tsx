@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DashboardData, GroupInfo } from "@/lib/types";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 
 const MultiLineChart = dynamic(() => import("./charts/MultiLineChart"), {
@@ -16,13 +17,18 @@ type Props = {
 
 export function GroupDetail({ data, selected }: Props) {
   const colors = Object.fromEntries(data.groups.map((g) => [g.id, g.color]));
+  const [series, setSeries] = useState<"speech" | "sentiment" | "miroOps">(
+    "speech"
+  );
+  const [onlySelected, setOnlySelected] = useState(false);
 
   const renderMultiLine = (series: "speech" | "sentiment" | "miroOps") => (
     <div className="h-[320px]">
       <MultiLineChart
         data={data.timeseries[series]}
         colors={colors}
-        groups={data.groups}
+        groups={onlySelected ? [selected] : data.groups}
+        yDomain={series === "sentiment" ? [-1, 1] : undefined}
       />
     </div>
   );
@@ -42,22 +48,46 @@ export function GroupDetail({ data, selected }: Props) {
         </TabsList>
         <TabsContent value="trend" className="pt-4">
           <div className="flex gap-2">
-            <button className="px-3 py-1 rounded-md bg-secondary text-xs">
+            <button
+              type="button"
+              className={`px-3 py-1 rounded-md text-xs ${
+                series === "speech" ? "bg-secondary" : "border"
+              }`}
+              onClick={() => setSeries("speech")}
+            >
               発話回数
             </button>
-            <button className="px-3 py-1 rounded-md border text-xs">
+            <button
+              type="button"
+              className={`px-3 py-1 rounded-md text-xs ${
+                series === "sentiment" ? "bg-secondary" : "border"
+              }`}
+              onClick={() => setSeries("sentiment")}
+            >
               感情
             </button>
-            <button className="px-3 py-1 rounded-md border text-xs">
+            <button
+              type="button"
+              className={`px-3 py-1 rounded-md text-xs ${
+                series === "miroOps" ? "bg-secondary" : "border"
+              }`}
+              onClick={() => setSeries("miroOps")}
+            >
               Miro作業量
             </button>
             <div className="ml-auto">
-              <button className="px-3 py-1 rounded-md border text-xs">
-                選択グループを表示
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-md text-xs ${
+                  onlySelected ? "bg-secondary" : "border"
+                }`}
+                onClick={() => setOnlySelected((v) => !v)}
+              >
+                {onlySelected ? "全グループを表示" : "選択グループを表示"}
               </button>
             </div>
           </div>
-          <div className="mt-3">{renderMultiLine("speech")}</div>
+          <div className="mt-3">{renderMultiLine(series)}</div>
         </TabsContent>
         <TabsContent value="miro" className="pt-4">
           <div className="text-sm text-muted-foreground">

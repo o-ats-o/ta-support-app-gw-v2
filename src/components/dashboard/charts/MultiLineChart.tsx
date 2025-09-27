@@ -17,9 +17,15 @@ type Props = {
   data: TimeSeriesPoint[];
   groups: GroupInfo[];
   colors: Record<string, string>;
+  yDomain?: [number | string, number | string];
 };
 
-export default function MultiLineChart({ data, groups, colors }: Props) {
+export default function MultiLineChart({
+  data,
+  groups,
+  colors,
+  yDomain,
+}: Props) {
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
 
   const toggleSeries = (key?: string | number) => {
@@ -53,12 +59,12 @@ export default function MultiLineChart({ data, groups, colors }: Props) {
         <YAxis
           stroke={axisColor}
           allowDecimals
-          domain={[0, "dataMax + 1"]}
+          domain={yDomain ?? [0, "dataMax + 1"]}
           tick={{ fontSize: 16, fill: tickColor }}
           tickLine={false}
           axisLine={{ stroke: axisColor, strokeWidth: 3 }}
         />
-        <ReTooltip cursor={{ strokeDasharray: "3 3" }} />
+        <ReTooltip cursor={{ strokeDasharray: "3 3" }} position={{ y: 8 }} />
         <Legend
           onClick={(e) =>
             toggleSeries((e as any)?.dataKey ?? (e as any)?.value)
