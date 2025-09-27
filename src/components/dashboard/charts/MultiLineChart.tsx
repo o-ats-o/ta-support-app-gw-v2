@@ -64,7 +64,11 @@ export default function MultiLineChart({
           tickLine={false}
           axisLine={{ stroke: axisColor, strokeWidth: 3 }}
         />
-        <ReTooltip cursor={{ strokeDasharray: "3 3" }} position={{ y: 8 }} />
+        <ReTooltip
+          cursor={{ strokeDasharray: "3 3" }}
+          position={{ y: 8 }}
+          wrapperStyle={{ zIndex: 9999 }}
+        />
         <Legend
           onClick={(e) =>
             toggleSeries((e as any)?.dataKey ?? (e as any)?.value)
