@@ -45,7 +45,7 @@ export default function MiroWorkDetail({ selected }: Props) {
   ] as const;
 
   return (
-    <div>
+    <Card className="p-4 h-[480px]">
       <div className="flex items-baseline gap-3">
         <div className="font-semibold text-base">Miro作業量詳細</div>
         <div className="text-sm text-muted-foreground">総数: {total}件</div>
@@ -75,6 +75,6 @@ export default function MiroWorkDetail({ selected }: Props) {
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
