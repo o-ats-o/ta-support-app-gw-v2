@@ -35,8 +35,10 @@ export default function TrendChartPanel({
       <div className="mt-2 flex justify-end mt-6 mr-4">
         <button
           type="button"
-          className={`px-3 py-2 rounded-md text-xs ${
-            onlySelected ? "bg-secondary" : "border"
+          className={`px-3 py-2 rounded-md text-xs border ${
+            onlySelected
+              ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
+              : "bg-white text-emerald-700 border-emerald-600 hover:bg-emerald-50"
           }`}
           onClick={() => setOnlySelected((v) => !v)}
         >
