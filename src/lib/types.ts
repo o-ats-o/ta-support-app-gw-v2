@@ -16,11 +16,8 @@ export interface GroupInfo {
   metrics: GroupSummaryMetrics;
 }
 
-export interface TimeSeriesPoint {
-  time: string; // 例: "11:10"
-  // 動的キー: 各グループIDに紐づく数値
-  [groupId: string]: string | number;
-}
+export type SeriesKey = GroupId;
+export type TimeSeriesPoint = { time: string } & Partial<Record<SeriesKey, number>>;
 
 export interface DashboardData {
   groups: GroupInfo[];
@@ -30,5 +27,15 @@ export interface DashboardData {
     miroOps: TimeSeriesPoint[];
   };
 }
+
+export const GROUP_COLORS: Record<GroupId, string> = {
+  A: "#ef4444",
+  B: "#f59e0b",
+  C: "#16a34a",
+  D: "#2563eb",
+  E: "#7c3aed",
+  F: "#0ea5e9",
+  G: "#ec4899",
+};
 
 
