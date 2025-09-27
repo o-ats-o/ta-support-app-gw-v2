@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { DashboardData, GroupInfo } from "@/lib/types";
+import { AlertTriangle, Users, Star } from "lucide-react";
 
 type Props = {
   data: DashboardData;
@@ -15,16 +16,25 @@ function Metric({
   label,
   value,
   delta,
+  emphasis,
 }: {
   label: string;
   value: string;
   delta?: number;
+  emphasis?: boolean;
 }) {
   const isPos = typeof delta === "number" && delta >= 0;
   return (
-    <div className="flex items-baseline gap-1 text-[13px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums">{value}</span>
+    <div className="flex items-baseline gap-1">
+      <span className="text-muted-foreground text-[13px]">{label}</span>
+      <span
+        className={cn(
+          "tabular-nums",
+          emphasis ? "text-[18px] font-semibold" : "font-medium"
+        )}
+      >
+        {value}
+      </span>
       {typeof delta === "number" && (
         <span
           className={cn(
@@ -44,24 +54,34 @@ function GroupRow({
   active,
   onClick,
   highlighted,
+  reason,
+  variant = "normal",
 }: {
   g: GroupInfo;
   active: boolean;
   onClick: () => void;
   highlighted?: boolean;
+  reason?: string;
+  variant?: "normal" | "recommended";
 }) {
   return (
     <button
       type="button"
       className={cn(
         "w-full px-3 py-3 text-left rounded-md transition-colors border",
-        highlighted ? "border-emerald-500/60" : "border-transparent",
-        active ? "bg-secondary" : "hover:bg-muted/50"
+        variant === "recommended"
+          ? "border-red-300 bg-white"
+          : "border-transparent",
+        highlighted && variant === "recommended" && "ring-1 ring-red-300",
+        active ? "ring-2 ring-indigo-300" : "hover:bg-muted/50"
       )}
       onClick={onClick}
     >
       <div className="flex items-center justify-between ">
         <div className="flex items-center gap-2">
+          {variant === "recommended" && (
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          )}
           <span
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: g.color }}
@@ -69,21 +89,29 @@ function GroupRow({
           <span className="font-medium">{g.name}</span>
         </div>
       </div>
+      {variant === "recommended" && reason && (
+        <div className="text-sm text-muted-foreground mt-1">
+          推薦理由: {reason}
+        </div>
+      )}
       <div className="mt-2 grid grid-cols-3 gap-8 justify-items-center text-center w-fit mx-auto">
         <Metric
           label="発話"
           value={`${g.metrics.speechCount}回`}
           delta={g.metrics.speechDelta}
+          emphasis={variant === "recommended"}
         />
         <Metric
           label="感情"
           value={g.metrics.sentimentAvg.toFixed(2)}
           delta={g.metrics.sentimentDelta}
+          emphasis={variant === "recommended"}
         />
         <Metric
           label="Miro"
           value={`${g.metrics.miroOpsCount}件`}
           delta={g.metrics.miroOpsDelta}
+          emphasis={variant === "recommended"}
         />
       </div>
     </button>
@@ -108,6 +136,14 @@ function getRecommendedIds(data: DashboardData, pick: number): string[] {
   return scored.slice(0, pick).map((x) => x.id);
 }
 
+function buildReason(g: GroupInfo): string {
+  const reasons: string[] = [];
+  if (g.metrics.speechCount <= 2) reasons.push("発話回数が少ない");
+  if (g.metrics.sentimentAvg < 0) reasons.push("感情がネガティブ");
+  if (reasons.length === 0) return "活動量と感情のバランス";
+  return reasons.join("、");
+}
+
 export default function RecommendGroupList({
   data,
   selectedId,
@@ -121,16 +157,20 @@ export default function RecommendGroupList({
   return (
     <Card className="p-3 h-full">
       <div className="flex items-center justify-between px-1 pt-1 pb-0">
-        <div className="font-semibold">グループ一覧</div>
+        <div className="flex items-center gap-2 font-semibold">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          グループ一覧
+        </div>
         <div className="text-sm text-muted-foreground">11:30〜</div>
       </div>
       <Separator className="my-0" />
 
       <div className="mt-2">
-        <div className="text-sm font-medium text-emerald-700 mb-1">
-          優先観察推薦グループ
+        <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
+          <Star className="h-4 w-4" />
+          <span className="text-sm font-medium">優先観察推薦グループ</span>
         </div>
-        <ul className="space-y-1 -mt-1">
+        <ul className="space-y-2">
           {recommended.map((g) => (
             <li key={g.id}>
               <GroupRow
@@ -138,6 +178,8 @@ export default function RecommendGroupList({
                 active={selectedId === g.id}
                 onClick={() => onSelect(g.id)}
                 highlighted
+                variant="recommended"
+                reason={buildReason(g)}
               />
             </li>
           ))}
@@ -145,7 +187,7 @@ export default function RecommendGroupList({
       </div>
 
       <div className="mt-4">
-        <div className="text-sm text-muted-foreground mb-1">
+        <div className="text-sm text-muted-foreground bg-muted rounded-md px-3 py-2 mb-2">
           その他のグループ
         </div>
         <ul className="space-y-1 -mt-1">
