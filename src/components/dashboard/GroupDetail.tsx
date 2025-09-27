@@ -3,15 +3,11 @@
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DashboardData, GroupInfo } from "@/lib/types";
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip as ReTooltip,
-  XAxis,
-  YAxis,
-  Legend,
-} from "recharts";
+import dynamic from "next/dynamic";
+
+const MultiLineChart = dynamic(() => import("./charts/MultiLineChart"), {
+  ssr: false,
+});
 
 type Props = {
   data: DashboardData;
@@ -23,28 +19,11 @@ export function GroupDetail({ data, selected }: Props) {
 
   const renderMultiLine = (series: "speech" | "sentiment" | "miroOps") => (
     <div className="h-[320px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data.timeseries[series]}
-          margin={{ left: 8, right: 16, top: 8 }}
-        >
-          <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" />
-          <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals />
-          <ReTooltip cursor={{ strokeDasharray: "3 3" }} />
-          <Legend />
-          {data.groups.map((g) => (
-            <Line
-              key={g.id}
-              type="monotone"
-              dataKey={g.id}
-              stroke={colors[g.id]}
-              dot={false}
-              strokeWidth={2}
-              isAnimationActive={false}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+      <MultiLineChart
+        data={data.timeseries[series]}
+        colors={colors}
+        groups={data.groups}
+      />
     </div>
   );
 
