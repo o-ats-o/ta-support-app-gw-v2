@@ -22,7 +22,7 @@ function Metric({
 }) {
   const isPos = typeof delta === "number" && delta >= 0;
   return (
-    <div className="flex items-baseline gap-1 text-xs">
+    <div className="flex items-baseline gap-1 text-[13px]">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium tabular-nums">{value}</span>
       {typeof delta === "number" && (
@@ -52,12 +52,12 @@ function GroupRow({
     <button
       type="button"
       className={cn(
-        "w-full px-3 py-3 text-left rounded-md transition-colors",
+        "w-full px-3 py-3 text-left rounded-md transition-colors ",
         active ? "bg-secondary" : "hover:bg-muted/50"
       )}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between ">
         <div className="flex items-center gap-2">
           <span
             className="h-2 w-2 rounded-full"
@@ -95,7 +95,7 @@ export function GroupList({ data, selectedId, onSelect }: Props) {
         <div className="text-sm text-muted-foreground">11:30〜</div>
       </div>
       <Separator className="my-0" />
-      <ul className="space-y-1">
+      <ul className="space-y-1 -mt-2">
         {data.groups.map((g) => (
           <li key={g.id}>
             <GroupRow

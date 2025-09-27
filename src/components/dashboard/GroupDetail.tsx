@@ -17,10 +17,10 @@ export function GroupDetail({ data, selected }: Props) {
   return (
     <Card className="p-3 h-full">
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-base">{selected.name}</span>
+        <span className="font-semibold text-lg">{selected.name}</span>
       </div>
 
-      <Tabs defaultValue="trend" className="mt-3">
+      <Tabs defaultValue="trend" className="-mt-1">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="trend">時間推移グラフ</TabsTrigger>
           <TabsTrigger value="logs">会話履歴</TabsTrigger>
