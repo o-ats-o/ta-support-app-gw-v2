@@ -50,6 +50,7 @@ function GroupRow({
 }) {
   return (
     <button
+      type="button"
       className={cn(
         "w-full px-3 py-3 text-left rounded-md transition-colors",
         active ? "bg-secondary" : "hover:bg-muted/50"
@@ -94,16 +95,17 @@ export function GroupList({ data, selectedId, onSelect }: Props) {
         <div className="text-sm text-muted-foreground">11:30〜</div>
       </div>
       <Separator className="my-0" />
-      <div className="space-y-1">
+      <ul className="space-y-1">
         {data.groups.map((g) => (
-          <GroupRow
-            key={g.id}
-            g={g}
-            active={selectedId === g.id}
-            onClick={() => onSelect(g.id)}
-          />
+          <li key={g.id}>
+            <GroupRow
+              g={g}
+              active={selectedId === g.id}
+              onClick={() => onSelect(g.id)}
+            />
+          </li>
         ))}
-      </div>
+      </ul>
     </Card>
   );
 }
