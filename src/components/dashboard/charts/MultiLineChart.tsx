@@ -36,7 +36,7 @@ export default function MultiLineChart({ data, groups, colors }: Props) {
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={data}
-        margin={{ left: 0, right: 28, top: 32, bottom: 4 }}
+        margin={{ left: 0, right: 28, top: 32, bottom: 32 }}
       >
         <CartesianGrid
           strokeDasharray="3 6"
