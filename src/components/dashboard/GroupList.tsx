@@ -1,7 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import GroupListHeader from "@/components/ui/group-list-header";
 import { cn } from "@/lib/utils";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 
@@ -90,11 +90,7 @@ function GroupRow({
 export function GroupList({ data, selectedId, onSelect }: Props) {
   return (
     <Card className="p-3 h-full">
-      <div className="flex items-center justify-between px-1 pt-1 pb-0">
-        <div className="font-semibold">グループ一覧</div>
-        <div className="text-sm text-muted-foreground">11:30〜</div>
-      </div>
-      <Separator className="my-0" />
+      <GroupListHeader />
       <ul className="space-y-1 -mt-2">
         {data.groups.map((g) => (
           <li key={g.id}>

@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import GroupListHeader from "@/components/ui/group-list-header";
 import { cn } from "@/lib/utils";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 import { AlertTriangle, Users, Star } from "lucide-react";
@@ -156,14 +157,7 @@ export default function RecommendGroupList({
 
   return (
     <Card className="p-3 h-full">
-      <div className="flex items-center justify-between px-1 pt-1 pb-0">
-        <div className="flex items-center gap-2 font-semibold">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          グループ一覧
-        </div>
-        <div className="text-sm text-muted-foreground">11:30〜</div>
-      </div>
-      <Separator className="my-0" />
+      <GroupListHeader />
 
       <div className="mt-2">
         <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
