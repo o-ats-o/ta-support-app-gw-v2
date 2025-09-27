@@ -27,6 +27,7 @@ export interface DashboardData {
     miroOps: TimeSeriesPoint[];
   };
   logs?: ConversationLog[];
+  scenario?: TalkScenario;
 }
 
 export const GROUP_COLORS: Record<GroupId, string> = {
@@ -55,4 +56,14 @@ export interface ConversationUtterance {
 export interface ConversationLog {
   timeLabel: string; // セクションの時刻ラベル (例: 11:30)
   turns: ConversationUtterance[];
+}
+
+// 声かけシナリオ
+export interface TalkScenarioItem {
+  text: string;
+}
+
+export interface TalkScenario {
+  title: string; // 見出し
+  bullets: TalkScenarioItem[]; // 箇条書き
 }

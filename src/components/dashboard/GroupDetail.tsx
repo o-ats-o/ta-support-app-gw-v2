@@ -6,6 +6,7 @@ import type { DashboardData, GroupInfo } from "@/lib/types";
 import TrendChartPanel from "./TrendChartPanel";
 import MiroWorkDetail from "./MiroWorkDetail";
 import ConversationLogs from "./ConversationLogs";
+import ScenarioPanel from "./ScenarioPanel";
 
 type Props = {
   data: DashboardData;
@@ -41,9 +42,7 @@ export function GroupDetail({ data, selected }: Props) {
           <ConversationLogs data={data} selected={selected} />
         </TabsContent>
         <TabsContent value="scenario" className="pt-4">
-          <div className="text-sm text-muted-foreground">
-            ダミー: 声かけシナリオ（未実装）
-          </div>
+          <ScenarioPanel data={data} selected={selected} />
         </TabsContent>
       </Tabs>
     </Card>
