@@ -162,6 +162,7 @@ export default function DashboardClient() {
 
   const handleDateChange = useCallback(async (date: string) => {
     try {
+      setSelectedDate(date);
       const nextGroups = await fetchGroupsByRange({
         date: date,
         timeRange: "00:00〜23:59", // 日付変更時は時間範囲を固定

@@ -120,3 +120,8 @@
     @apply bg-background text-foreground overscroll-contain;
   }
 }
+
+/* Make date input calendar icon white in WebKit-based browsers */
+.appheader-date::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
