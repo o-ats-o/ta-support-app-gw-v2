@@ -12,14 +12,14 @@ export default function RecommendClient() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-50 h-12 bg-emerald-600 text-white flex items-center px-4 font-semibold w-full">
+      <header className="fixed top-0 left-0 right-0 z-50 h-12 bg-emerald-600 text-white flex items-center px-4 font-semibold w-full">
         TA機関指導支援システム
         <button className="ml-auto text-sm bg-white/15 rounded px-3 py-1">
           更新
         </button>
       </header>
 
-      <main className="p-4 grid grid-cols-1 lg:grid-cols-[520px_minmax(0,1fr)] gap-2">
+      <main className="pt-14 px-4 pb-4 grid grid-cols-1 lg:grid-cols-[520px_minmax(0,1fr)] gap-2">
         <div>
           <RecommendGroupList
             data={data}
@@ -27,7 +27,7 @@ export default function RecommendClient() {
             onSelect={setSelectedId}
           />
         </div>
-        <div className="lg:sticky lg:top-16 self-start">
+        <div className="lg:sticky lg:top-14 self-start">
           <GroupDetail data={data} selected={selected} />
         </div>
       </main>
