@@ -25,6 +25,11 @@ export default function DashboardClient() {
             data={data}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onTimeChange={(range) => {
+              // /list-ver 用のエンドポイントを叩く想定
+              // ここではダミー実装（実際は fetch 等で API 呼び出し）
+              console.log("[list-ver] fetch with time range:", range);
+            }}
           />
         </div>
         <div className="lg:sticky lg:top-14 self-start">

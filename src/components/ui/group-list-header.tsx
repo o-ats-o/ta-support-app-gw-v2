@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -15,11 +15,13 @@ import { Button } from "@/components/ui/button";
 type Props = {
   title?: string;
   timeLabel?: string;
+  onTimeChange?: (timeRange: string) => void;
 };
 
 export default function GroupListHeader({
   title = "グループ一覧",
   timeLabel = "10:40〜10:45",
+  onTimeChange,
 }: Props) {
   const [selectedTime, setSelectedTime] = useState(timeLabel);
 
@@ -40,6 +42,11 @@ export default function GroupListHeader({
     }
     return results;
   }, []);
+
+  // 時間変更を親へ通知
+  useEffect(() => {
+    onTimeChange?.(selectedTime);
+  }, [selectedTime, onTimeChange]);
 
   return (
     <div>

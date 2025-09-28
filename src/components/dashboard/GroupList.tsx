@@ -9,6 +9,7 @@ type Props = {
   data: DashboardData;
   selectedId: string;
   onSelect: (id: string) => void;
+  onTimeChange?: (timeRange: string) => void;
 };
 
 function Metric({
@@ -87,10 +88,10 @@ function GroupRow({
   );
 }
 
-export function GroupList({ data, selectedId, onSelect }: Props) {
+export function GroupList({ data, selectedId, onSelect, onTimeChange }: Props) {
   return (
     <Card className="h-full">
-      <GroupListHeader />
+      <GroupListHeader onTimeChange={onTimeChange} />
       <ul className="space-y-1 px-3 -mt-2">
         {data.groups.map((g) => (
           <li key={g.id}>

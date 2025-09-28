@@ -11,6 +11,7 @@ type Props = {
   data: DashboardData;
   selectedId: string;
   onSelect: (id: string) => void;
+  onTimeChange?: (timeRange: string) => void;
 };
 
 function Metric({
@@ -149,6 +150,7 @@ export default function RecommendGroupList({
   data,
   selectedId,
   onSelect,
+  onTimeChange,
 }: Props) {
   const recommendIds = getRecommendedIds(data, 2);
   const recommendSet = new Set(recommendIds);
@@ -157,7 +159,7 @@ export default function RecommendGroupList({
 
   return (
     <Card className="h-full">
-      <GroupListHeader />
+      <GroupListHeader onTimeChange={onTimeChange} />
 
       <div className="-mt-6">
         <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 mb-2">
