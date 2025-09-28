@@ -54,8 +54,16 @@ export default function TrendChartPanel({
         <MultiLineChart
           data={data.timeseries[series]}
           colors={colors}
-          groups={onlySelected ? [selected] : groups}
+          groups={groups}
           yDomain={series === "sentiment" ? [-1, 1] : undefined}
+          initialHiddenIds={
+            // ボタン状態に応じて初期非表示を切替。
+            // 「選択グループを表示」= true のときは他を非表示、
+            // 「全グループを表示」= false のときは全て表示。
+            onlySelected
+              ? groups.filter((g) => g.id !== selected.id).map((g) => g.id)
+              : []
+          }
         />
       </div>
     </Card>

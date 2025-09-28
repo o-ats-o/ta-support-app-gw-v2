@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -19,6 +19,8 @@ type Props = {
   groups: GroupInfo[];
   colors: Record<string, string>;
   yDomain?: [number | string, number | string];
+  // 初期状態で非表示にする系列のID一覧（プロップ変更時に再適用）
+  initialHiddenIds?: string[];
 };
 
 export default function MultiLineChart({
@@ -26,8 +28,20 @@ export default function MultiLineChart({
   groups,
   colors,
   yDomain,
+  initialHiddenIds,
 }: Props) {
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
+
+  // 初期非表示の指定が変更されたら反映する
+  useEffect(() => {
+    if (!initialHiddenIds) return;
+    const next: Record<string, boolean> = {};
+    for (const g of groups) {
+      next[g.id] = initialHiddenIds.includes(g.id);
+    }
+    setHidden(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialHiddenIds, groups]);
 
   const toggleSeries = (key?: string | number) => {
     if (!key) return;
