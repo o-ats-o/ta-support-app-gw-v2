@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import RecommendGroupList from "@/components/dashboard/RecommendGroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
+import { AppHeader } from "@/components/ui/app-header";
 
 export default function RecommendClient() {
   const data = useMemo(() => dashboardMock, []);
@@ -12,12 +13,11 @@ export default function RecommendClient() {
 
   return (
     <div className="min-h-screen">
-      <header className="fixed top-0 left-0 right-0 z-50 h-12 bg-emerald-600 text-white flex items-center px-4 font-semibold w-full">
-        TA機関指導支援システム
-        <button className="ml-auto text-sm bg-white/15 rounded px-3 py-1">
-          更新
-        </button>
-      </header>
+      <AppHeader
+        date={new Date().toISOString().slice(0, 10)}
+        onDateChange={() => {}}
+        onRefresh={() => {}}
+      />
 
       <main className="pt-14 px-4 pb-4 grid grid-cols-1 lg:grid-cols-[520px_minmax(0,1fr)] gap-2">
         <div>
