@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   title?: string;
@@ -47,18 +48,52 @@ export default function GroupListHeader({
           <Users className="h-4 w-4 text-muted-foreground" />
           {title}
         </div>
-        <Select value={selectedTime} onValueChange={setSelectedTime}>
-          <SelectTrigger size="sm" className="min-w-[96px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {timeOptions.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const idx = timeOptions.indexOf(selectedTime);
+              const next = Math.max(0, idx - 1);
+              setSelectedTime(timeOptions[next] ?? timeOptions[0]);
+            }}
+            disabled={timeOptions.indexOf(selectedTime) <= 0}
+            aria-label="前の時間帯"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <Select value={selectedTime} onValueChange={setSelectedTime}>
+            <SelectTrigger size="sm" className="w-[152px] tabular-nums">
+              <SelectValue className="font-mono tabular-nums" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const idx = timeOptions.indexOf(selectedTime);
+              const next = Math.min(timeOptions.length - 1, idx + 1);
+              setSelectedTime(
+                timeOptions[next] ?? timeOptions[timeOptions.length - 1]
+              );
+            }}
+            disabled={
+              timeOptions.indexOf(selectedTime) >= timeOptions.length - 1
+            }
+            aria-label="次の時間帯"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <Separator />
     </div>
