@@ -18,25 +18,16 @@ function Metric({
   label,
   value,
   delta,
-  emphasis,
 }: {
   label: string;
   value: string;
   delta?: number;
-  emphasis?: boolean;
 }) {
   const isPos = typeof delta === "number" && delta >= 0;
   return (
-    <div className="flex items-baseline gap-1">
-      <span className="text-muted-foreground text-[13px]">{label}</span>
-      <span
-        className={cn(
-          "tabular-nums",
-          emphasis ? "text-[18px] font-semibold" : "font-medium"
-        )}
-      >
-        {value}
-      </span>
+    <div className="flex items-baseline gap-1 text-[13px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{value}</span>
       {typeof delta === "number" && (
         <span
           className={cn(
@@ -92,7 +83,7 @@ function GroupRow({
         </div>
       </div>
       {variant === "recommended" && reason && (
-        <div className="text-sm text-muted-foreground mt-1">
+        <div className="text-[13px] text-muted-foreground mt-1">
           推薦理由: {reason}
         </div>
       )}
@@ -101,19 +92,16 @@ function GroupRow({
           label="発話"
           value={`${g.metrics.speechCount}回`}
           delta={g.metrics.speechDelta}
-          emphasis={variant === "recommended"}
         />
         <Metric
           label="感情"
           value={g.metrics.sentimentAvg.toFixed(2)}
           delta={g.metrics.sentimentDelta}
-          emphasis={variant === "recommended"}
         />
         <Metric
           label="Miro"
           value={`${g.metrics.miroOpsCount}件`}
           delta={g.metrics.miroOpsDelta}
-          emphasis={variant === "recommended"}
         />
       </div>
     </button>
