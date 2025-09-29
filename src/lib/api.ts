@@ -8,8 +8,25 @@ const API_BASE_URL = (() => {
       "NEXT_PUBLIC_API_BASE_URL is not set. Please define it in your environment (e.g., .env.local)."
     );
   }
-  return value.endsWith("/") ? value : `${value}/`;
+  const trimmed = value.trim();
+  return trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
 })();
+
+const API_BASE_IS_ABSOLUTE = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(API_BASE_URL);
+
+function buildApiUrl(path: string, params: URLSearchParams): string {
+  const normalizedPath = path.replace(/^\/+/, "");
+  const search = params.toString();
+
+  if (API_BASE_IS_ABSOLUTE) {
+    const url = new URL(normalizedPath, API_BASE_URL);
+    url.search = search;
+    return url.toString();
+  }
+
+  const finalPath = `${API_BASE_URL}${normalizedPath}`;
+  return search ? `${finalPath}?${search}` : finalPath;
+}
 
 const SESSIONS_PATH = "api/sessions";
 const RECOMMENDATIONS_PATH = "api/groups/recommendations";
@@ -86,9 +103,7 @@ function buildSessionsUrl({ start, end }: SessionIsoRange): string {
     start_time: start,
     end_time: end,
   });
-  const url = new URL(SESSIONS_PATH, API_BASE_URL);
-  url.search = params.toString();
-  return url.toString();
+  return buildApiUrl(SESSIONS_PATH, params);
 }
 
 function buildRecommendationsUrl(
@@ -100,9 +115,7 @@ function buildRecommendationsUrl(
   if (typeof limit === "number" && limit > 0) {
     params.set("limit", String(limit));
   }
-  const url = new URL(RECOMMENDATIONS_PATH, API_BASE_URL);
-  url.search = params.toString();
-  return url.toString();
+  return buildApiUrl(RECOMMENDATIONS_PATH, params);
 }
 
 async function requestGroupInfos(range: SessionIsoRange): Promise<GroupInfo[]> {
