@@ -21,6 +21,7 @@ export default function DashboardClient() {
     new Date().toISOString().slice(0, 10)
   );
   const [currentRange, setCurrentRange] = useState<string>(DEFAULT_TIME_RANGE);
+  const [loading, setLoading] = useState(false);
   const cacheRef = useRef<Map<string, GroupInfo[]>>(new Map());
 
   const getCacheKey = useCallback(
@@ -60,10 +61,12 @@ export default function DashboardClient() {
             key,
             count: cached.length,
           });
+          setLoading(false);
           applyGroups(cached);
           return;
         }
       }
+      setLoading(true);
       console.log("[list-ver] fetching /api/sessions", {
         date,
         range,
@@ -80,6 +83,8 @@ export default function DashboardClient() {
         applyGroups(nextGroups);
       } catch (err) {
         console.error("[list-ver] fetch failed", err);
+      } finally {
+        setLoading(false);
       }
     },
     [applyGroups, getCacheKey]
@@ -119,6 +124,7 @@ export default function DashboardClient() {
             onSelect={setSelectedId}
             onTimeChange={handleTimeChange}
             timeRange={currentRange}
+            loading={loading}
           />
         </div>
         <div className="lg:sticky lg:top-14 self-start">

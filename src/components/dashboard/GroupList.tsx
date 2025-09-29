@@ -1,7 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import GroupListHeader from "@/components/ui/group-list-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 
@@ -11,6 +13,7 @@ type Props = {
   onSelect: (id: string) => void;
   onTimeChange?: (timeRange: string) => void;
   timeRange?: string;
+  loading?: boolean;
 };
 
 function Metric({
@@ -89,27 +92,58 @@ function GroupRow({
   );
 }
 
+function LoadingList({ count }: { count: number }) {
+  return (
+    <ul className="space-y-1 px-3 -mt-2">
+      {Array.from({ length: count }).map((_, idx) => (
+        <li key={idx}>
+          <Skeleton className="h-20 w-full rounded-md" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EmptyMessage({ children }: { children: ReactNode }) {
+  return (
+    <div className="px-3 -mt-2 py-6 text-sm text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
 export function GroupList({
   data,
   selectedId,
   onSelect,
   onTimeChange,
   timeRange,
+  loading = false,
 }: Props) {
+  const groups = data.groups;
+  const skeletonCount = Math.max(groups.length || 0, 5);
+  const isEmpty = groups.length === 0;
+
   return (
     <Card className="h-full">
       <GroupListHeader timeLabel={timeRange} onTimeChange={onTimeChange} />
-      <ul className="space-y-1 px-3 -mt-2">
-        {data.groups.map((g) => (
-          <li key={g.id}>
-            <GroupRow
-              g={g}
-              active={selectedId === g.id}
-              onClick={() => onSelect(g.id)}
-            />
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <LoadingList count={skeletonCount} />
+      ) : isEmpty ? (
+        <EmptyMessage>該当するグループがありません。</EmptyMessage>
+      ) : (
+        <ul className="space-y-1 px-3 -mt-2">
+          {groups.map((g) => (
+            <li key={g.id}>
+              <GroupRow
+                g={g}
+                active={selectedId === g.id}
+                onClick={() => onSelect(g.id)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }
