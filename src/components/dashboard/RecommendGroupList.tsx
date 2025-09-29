@@ -1,18 +1,23 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import GroupListHeader from "@/components/ui/group-list-header";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import type { DashboardData, GroupInfo } from "@/lib/types";
-import { AlertTriangle, Users, Star } from "lucide-react";
+import type { GroupInfo, RecommendationGroupItem } from "@/lib/types";
+import { AlertCircle, AlertTriangle, Star } from "lucide-react";
 
 type Props = {
-  data: DashboardData;
+  recommendations: RecommendationGroupItem[];
   selectedId: string;
   onSelect: (id: string) => void;
   onTimeChange?: (timeRange: string) => void;
   timeRange?: string;
+  loading?: boolean;
+  error?: string | null;
+  highlightCount?: number;
 };
 
 function Metric({
@@ -44,20 +49,25 @@ function Metric({
 }
 
 function GroupRow({
-  g,
+  group,
   active,
   onClick,
-  highlighted,
   reason,
   variant = "normal",
+  rank,
+  score,
 }: {
-  g: GroupInfo;
+  group: GroupInfo;
   active: boolean;
   onClick: () => void;
-  highlighted?: boolean;
   reason?: string;
   variant?: "normal" | "recommended";
+  rank?: number;
+  score?: number;
 }) {
+  const showScore = typeof score === "number" && Number.isFinite(score);
+  const showRank = typeof rank === "number" && rank > 0;
+
   return (
     <button
       type="button"
@@ -66,24 +76,35 @@ function GroupRow({
         variant === "recommended"
           ? "border-red-300 bg-white"
           : "border-transparent",
-        highlighted && variant === "recommended" && "ring-1 ring-red-300",
         active ? "ring-2 ring-indigo-300" : "hover:bg-muted/50"
       )}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between ">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {variant === "recommended" && (
             <AlertTriangle className="h-4 w-4 text-red-500" />
           )}
           <span
             className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: g.color }}
+            style={{ backgroundColor: group.color }}
           />
-          <span className="font-medium">{g.name}</span>
+          <span className="font-medium">{group.name}</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          {showRank && (
+            <Badge variant="secondary" className="px-2 py-0 text-xs">
+              #{rank}
+            </Badge>
+          )}
+          {showScore && (
+            <span className="tabular-nums text-muted-foreground">
+              score {score!.toFixed(2)}
+            </span>
+          )}
         </div>
       </div>
-      {variant === "recommended" && reason && (
+      {reason && (
         <div className="text-[13px] text-muted-foreground mt-1">
           推薦理由: {reason}
         </div>
@@ -91,61 +112,55 @@ function GroupRow({
       <div className="mt-2 grid grid-cols-3 gap-8 justify-items-center text-center w-fit mx-auto">
         <Metric
           label="発話"
-          value={`${g.metrics.speechCount}回`}
-          delta={g.metrics.speechDelta}
+          value={`${group.metrics.speechCount}回`}
+          delta={group.metrics.speechDelta}
         />
         <Metric
           label="感情"
-          value={g.metrics.sentimentAvg.toFixed(2)}
-          delta={g.metrics.sentimentDelta}
+          value={group.metrics.sentimentAvg.toFixed(2)}
+          delta={group.metrics.sentimentDelta}
         />
         <Metric
           label="Miro"
-          value={`${g.metrics.miroOpsCount}件`}
-          delta={g.metrics.miroOpsDelta}
+          value={`${group.metrics.miroOpsCount}件`}
+          delta={group.metrics.miroOpsDelta}
         />
       </div>
     </button>
   );
 }
 
-function getRecommendedIds(data: DashboardData, pick: number): string[] {
-  const lastSent =
-    data.timeseries.sentiment[data.timeseries.sentiment.length - 1];
-  const lastSpeech = data.timeseries.speech[data.timeseries.speech.length - 1];
-
-  const scored = data.groups.map((g) => {
-    const sPos = (lastSent as any)[g.id] ?? g.metrics.sentimentAvg;
-    const speak = (lastSpeech as any)[g.id] ?? g.metrics.speechCount;
-    const positiveSentiment = sPos > 0 ? 1 : 0;
-    // 優先度: ポジティブ感情を優先しつつ、発話が少ないほど優先。
-    const score = positiveSentiment * 100 - speak;
-    return { id: g.id, score, speak, sPos };
-  });
-
-  scored.sort((a, b) => b.score - a.score || a.speak - b.speak);
-  return scored.slice(0, pick).map((x) => x.id);
+function LoadingList({ count }: { count: number }) {
+  return (
+    <ul className="space-y-2 px-3">
+      {Array.from({ length: count }).map((_, idx) => (
+        <li key={idx}>
+          <Skeleton className="h-24 w-full rounded-md" />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-function buildReason(g: GroupInfo): string {
-  const reasons: string[] = [];
-  if (g.metrics.speechCount <= 2) reasons.push("発話回数が少ない");
-  if (g.metrics.sentimentAvg < 0) reasons.push("感情がネガティブ");
-  if (reasons.length === 0) return "活動量と感情のバランス";
-  return reasons.join("、");
+function EmptyMessage({ children }: { children: ReactNode }) {
+  return (
+    <div className="text-sm text-muted-foreground px-3 py-6">{children}</div>
+  );
 }
 
 export default function RecommendGroupList({
-  data,
+  recommendations,
   selectedId,
   onSelect,
   onTimeChange,
   timeRange,
+  loading = false,
+  error = null,
+  highlightCount = 2,
 }: Props) {
-  const recommendIds = getRecommendedIds(data, 2);
-  const recommendSet = new Set(recommendIds);
-  const recommended = data.groups.filter((g) => recommendSet.has(g.id));
-  const others = data.groups.filter((g) => !recommendSet.has(g.id));
+  const highlight = Math.max(0, highlightCount);
+  const recommended = recommendations.slice(0, highlight);
+  const others = recommendations.slice(highlight);
 
   return (
     <Card className="h-full">
@@ -156,37 +171,59 @@ export default function RecommendGroupList({
           <Star className="h-4 w-4" />
           <span className="text-sm font-medium">優先観察推薦グループ</span>
         </div>
-        <ul className="space-y-2 px-3">
-          {recommended.map((g) => (
-            <li key={g.id}>
-              <GroupRow
-                g={g}
-                active={selectedId === g.id}
-                onClick={() => onSelect(g.id)}
-                highlighted
-                variant="recommended"
-                reason={buildReason(g)}
-              />
-            </li>
-          ))}
-        </ul>
+
+        {error ? (
+          <div className="mx-3 mb-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </div>
+        ) : loading ? (
+          <LoadingList count={highlight || 2} />
+        ) : recommended.length === 0 ? (
+          <EmptyMessage>該当するグループがありません。</EmptyMessage>
+        ) : (
+          <ul className="space-y-2 px-3">
+            {recommended.map((item) => (
+              <li key={item.rawGroupId || item.group.id}>
+                <GroupRow
+                  group={item.group}
+                  active={selectedId === item.group.id}
+                  onClick={() => onSelect(item.group.id)}
+                  variant="recommended"
+                  reason={item.reasons.join("、") || undefined}
+                  rank={item.rank}
+                  score={item.score}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="pb-3 -mt-2">
         <div className="text-sm text-muted-foreground bg-muted px-3 py-2 mb-2">
           その他のグループ
         </div>
-        <ul className="space-y-1 px-3">
-          {others.map((g) => (
-            <li key={g.id}>
-              <GroupRow
-                g={g}
-                active={selectedId === g.id}
-                onClick={() => onSelect(g.id)}
-              />
-            </li>
-          ))}
-        </ul>
+        {loading ? (
+          <LoadingList count={Math.max(others.length, 3)} />
+        ) : others.length === 0 ? (
+          <EmptyMessage>その他のグループはありません。</EmptyMessage>
+        ) : (
+          <ul className="space-y-1 px-3">
+            {others.map((item) => (
+              <li key={item.rawGroupId || item.group.id}>
+                <GroupRow
+                  group={item.group}
+                  active={selectedId === item.group.id}
+                  onClick={() => onSelect(item.group.id)}
+                  reason={item.reasons.join("、") || undefined}
+                  rank={item.rank}
+                  score={item.score}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Card>
   );

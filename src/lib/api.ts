@@ -1,4 +1,4 @@
-import type { GroupId, GroupInfo } from "./types";
+import type { GroupId, GroupInfo, RecommendationGroupItem } from "./types";
 import { GROUP_COLORS } from "./types";
 
 const API_BASE_URL = (() => {
@@ -12,6 +12,7 @@ const API_BASE_URL = (() => {
 })();
 
 const SESSIONS_PATH = "api/sessions";
+const RECOMMENDATIONS_PATH = "api/groups/recommendations";
 const TIME_RANGE_RE = /^(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})$/;
 
 export type SessionIsoRange = {
@@ -24,11 +25,23 @@ export type JstDateTimeRange = {
   timeRange: string; // HH:MM〜HH:MM
 };
 
+type ApiMetrics = {
+  utterances?: number;
+  miro?: number;
+  sentiment_avg?: number;
+};
+
 type ApiGroupItem = {
   group_id: string;
-  metrics: { utterances: number; miro: number; sentiment_avg: number };
-  prev_metrics: { utterances: number; miro: number; sentiment_avg: number };
-  deltas: { utterances: number; miro: number; sentiment_avg: number };
+  metrics?: ApiMetrics;
+  prev_metrics?: ApiMetrics;
+  deltas?: ApiMetrics;
+};
+
+type ApiRecommendationItem = ApiGroupItem & {
+  score?: number;
+  rank?: number;
+  reasons?: string[];
 };
 
 const VALID_IDS: readonly GroupId[] = [
@@ -78,6 +91,20 @@ function buildSessionsUrl({ start, end }: SessionIsoRange): string {
   return url.toString();
 }
 
+function buildRecommendationsUrl(
+  { start, end }: SessionIsoRange,
+  limit?: number
+): string {
+  const params = new URLSearchParams({ start });
+  if (end) params.set("end", end);
+  if (typeof limit === "number" && limit > 0) {
+    params.set("limit", String(limit));
+  }
+  const url = new URL(RECOMMENDATIONS_PATH, API_BASE_URL);
+  url.search = params.toString();
+  return url.toString();
+}
+
 async function requestGroupInfos(range: SessionIsoRange): Promise<GroupInfo[]> {
   const res = await fetch(buildSessionsUrl(range), { cache: "no-store" });
   if (!res.ok) {
@@ -89,6 +116,52 @@ async function requestGroupInfos(range: SessionIsoRange): Promise<GroupInfo[]> {
     .map(mapApiItemToGroupInfo)
     .filter((v): v is GroupInfo => Boolean(v))
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+async function requestRecommendations(
+  range: SessionIsoRange,
+  options?: { limit?: number }
+): Promise<RecommendationGroupItem[]> {
+  const res = await fetch(
+    buildRecommendationsUrl(range, options?.limit),
+    {
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch recommendations: ${res.status}`);
+  }
+
+  const json = (await res.json()) as ApiRecommendationItem[];
+  return json
+    .map((item, index) => {
+      const group = mapApiItemToGroupInfo(item);
+      if (!group) return null;
+      const numericRank = Number(item.rank);
+      const rank = Number.isFinite(numericRank)
+        ? Math.max(1, Math.round(numericRank))
+        : index + 1;
+      const numericScore = Number(item.score);
+      const score = Number.isFinite(numericScore)
+        ? numericScore
+        : Number.POSITIVE_INFINITY;
+      const reasons = Array.isArray(item.reasons)
+        ? item.reasons.filter((r): r is string => typeof r === "string")
+        : [];
+      return {
+        group,
+        rawGroupId: item.group_id,
+        score,
+        rank,
+        reasons,
+      } satisfies RecommendationGroupItem;
+    })
+    .filter((v): v is RecommendationGroupItem => Boolean(v))
+    .sort((a, b) =>
+      a.rank !== b.rank
+        ? a.rank - b.rank
+        : a.score - b.score
+    );
 }
 
 function fallbackRange(): SessionIsoRange {
@@ -149,4 +222,18 @@ export async function fetchGroupsByRange(
   range: JstDateTimeRange
 ): Promise<GroupInfo[]> {
   return requestGroupInfos(jstDateTimeRangeToUtcIso(range));
+}
+
+export async function fetchGroupRecommendations(
+  range: string,
+  options?: { limit?: number }
+): Promise<RecommendationGroupItem[]> {
+  return requestRecommendations(timeRangeToIso(range), options);
+}
+
+export async function fetchGroupRecommendationsByRange(
+  range: JstDateTimeRange,
+  options?: { limit?: number }
+): Promise<RecommendationGroupItem[]> {
+  return requestRecommendations(jstDateTimeRangeToUtcIso(range), options);
 }

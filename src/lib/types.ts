@@ -16,6 +16,14 @@ export interface GroupInfo {
   metrics: GroupSummaryMetrics;
 }
 
+export interface RecommendationGroupItem {
+  group: GroupInfo;
+  rawGroupId: string;
+  score: number;
+  rank: number;
+  reasons: string[];
+}
+
 export type SeriesKey = GroupId;
 export type TimeSeriesPoint = { time: string } & Partial<Record<SeriesKey, number>>;
 
