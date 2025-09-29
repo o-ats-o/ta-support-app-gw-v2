@@ -10,6 +10,7 @@ import { fetchGroupRecommendationsByRange } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 
 const DEFAULT_HIGHLIGHT_COUNT = 2;
+const STORAGE_KEY = "recommend:selectedGroup";
 
 export default function RecommendClient() {
   const base = useMemo(() => dashboardMock, []);
@@ -34,6 +35,19 @@ export default function RecommendClient() {
     data.groups.find((g) => g.id === selectedId) ??
     data.groups[0] ??
     base.groups[0];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    setSelectedId((prev) => (prev === stored ? prev : stored));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(STORAGE_KEY, selectedId);
+  }, [selectedId]);
 
   const getCacheKey = useCallback(
     (date: string, range: string) => `${date}::${range}`,

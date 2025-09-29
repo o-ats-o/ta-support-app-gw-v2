@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GroupList } from "@/components/dashboard/GroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
@@ -10,6 +10,7 @@ import { fetchGroupsByRange } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
+const STORAGE_KEY = "dashboard:selectedGroup";
 
 export default function DashboardClient() {
   const base = useMemo(() => dashboardMock, []);
@@ -39,6 +40,19 @@ export default function DashboardClient() {
   const data = useMemo(() => ({ ...base, groups }), [base, groups]);
   const selected =
     data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    setSelectedId((prev) => (prev === stored ? prev : stored));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(STORAGE_KEY, selectedId);
+  }, [selectedId]);
 
   const fetchGroupsForRange = useCallback(
     async ({
