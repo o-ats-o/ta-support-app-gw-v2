@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import GroupListHeader from "@/components/ui/group-list-header";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { GroupInfo, RecommendationGroupItem } from "@/lib/types";
@@ -54,20 +53,13 @@ function GroupRow({
   onClick,
   reason,
   variant = "normal",
-  rank,
-  score,
 }: {
   group: GroupInfo;
   active: boolean;
   onClick: () => void;
   reason?: string;
   variant?: "normal" | "recommended";
-  rank?: number;
-  score?: number;
 }) {
-  const showScore = typeof score === "number" && Number.isFinite(score);
-  const showRank = typeof rank === "number" && rank > 0;
-
   return (
     <button
       type="button"
@@ -80,29 +72,15 @@ function GroupRow({
       )}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {variant === "recommended" && (
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          )}
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: group.color }}
-          />
-          <span className="font-medium">{group.name}</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {showRank && (
-            <Badge variant="secondary" className="px-2 py-0 text-xs">
-              #{rank}
-            </Badge>
-          )}
-          {showScore && (
-            <span className="tabular-nums text-muted-foreground">
-              score {score!.toFixed(2)}
-            </span>
-          )}
-        </div>
+      <div className="flex items-center gap-2">
+        {variant === "recommended" && (
+          <AlertTriangle className="h-4 w-4 text-red-500" />
+        )}
+        <span
+          className="h-2 w-2 rounded-full"
+          style={{ backgroundColor: group.color }}
+        />
+        <span className="font-medium">{group.name}</span>
       </div>
       {reason && (
         <div className="text-[13px] text-muted-foreground mt-1">
@@ -191,8 +169,6 @@ export default function RecommendGroupList({
                   onClick={() => onSelect(item.group.id)}
                   variant="recommended"
                   reason={item.reasons.join("、") || undefined}
-                  rank={item.rank}
-                  score={item.score}
                 />
               </li>
             ))}
@@ -217,8 +193,6 @@ export default function RecommendGroupList({
                   active={selectedId === item.group.id}
                   onClick={() => onSelect(item.group.id)}
                   reason={item.reasons.join("、") || undefined}
-                  rank={item.rank}
-                  score={item.score}
                 />
               </li>
             ))}
