@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 type PopoverCtx = {
   open: boolean;
   setOpen: (v: boolean) => void;
-  anchorRef: React.RefObject<HTMLDivElement>;
+  anchorRef: React.RefObject<HTMLDivElement | null>;
 };
 
 const Ctx = createContext<PopoverCtx | null>(null);
@@ -24,7 +24,7 @@ type PopoverProps = React.PropsWithChildren<{
 
 export function Popover({ open, onOpenChange, children }: PopoverProps) {
   const [innerOpen, setInnerOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
   const value = useMemo<PopoverCtx>(
     () => ({
       open: typeof open === "boolean" ? open : innerOpen,
