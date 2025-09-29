@@ -58,7 +58,18 @@ async function handler(
   upstreamHeaders.delete("access-control-allow-methods");
   upstreamHeaders.delete("access-control-max-age");
 
-  return new NextResponse(upstreamResponse.body, {
+  if (req.method === "HEAD") {
+    return new NextResponse(null, {
+      status: upstreamResponse.status,
+      headers: upstreamHeaders,
+    });
+  }
+
+  const bodyBuffer = await upstreamResponse.arrayBuffer();
+  upstreamHeaders.delete("content-encoding");
+  upstreamHeaders.set("content-length", String(bodyBuffer.byteLength));
+
+  return new NextResponse(bodyBuffer, {
     status: upstreamResponse.status,
     headers: upstreamHeaders,
   });
