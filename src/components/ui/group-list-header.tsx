@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
+export const DEFAULT_TIME_LABEL = "10:40〜10:45";
+
 type Props = {
   title?: string;
   timeLabel?: string;
@@ -20,7 +22,7 @@ type Props = {
 
 export default function GroupListHeader({
   title = "グループ一覧",
-  timeLabel = "10:40〜10:45",
+  timeLabel = DEFAULT_TIME_LABEL,
   onTimeChange,
 }: Props) {
   const [selectedTime, setSelectedTime] = useState(timeLabel);
@@ -42,6 +44,11 @@ export default function GroupListHeader({
     }
     return results;
   }, []);
+
+  useEffect(() => {
+    if (!timeLabel) return;
+    setSelectedTime((prev) => (prev === timeLabel ? prev : timeLabel));
+  }, [timeLabel]);
 
   // 時間変更を親へ通知
   useEffect(() => {
