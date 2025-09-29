@@ -40,7 +40,6 @@ export default function MultiLineChart({
       next[g.id] = initialHiddenIds.includes(g.id);
     }
     setHidden(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHiddenIds, groups]);
 
   const toggleSeries = (key?: string | number) => {
