@@ -10,11 +10,13 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
+export type RefreshHandler = (options?: { force?: boolean }) => void;
+
 type Props = {
   title?: string;
   date: string; // YYYY-MM-DD
   onDateChange: (date: string) => void;
-  onRefresh?: () => void;
+  onRefresh?: RefreshHandler;
 };
 
 export function AppHeader({
@@ -69,7 +71,10 @@ export function AppHeader({
         </Popover>
         <button
           className="h-8 text-sm bg-white/15 rounded px-3 py-1 hover:bg-white/20 focus:ring-2 focus:ring-white/30"
-          onClick={onRefresh}
+          onClick={() => {
+            onRefresh?.({ force: true });
+            window.location.reload();
+          }}
         >
           更新
         </button>
