@@ -25,20 +25,27 @@ function Metric({
   value: string;
   delta?: number;
 }) {
-  const isPos = typeof delta === "number" && delta >= 0;
+  const hasDelta = typeof delta === "number" && !Number.isNaN(delta);
+  const isPositive = hasDelta && delta! > 0;
+  const isNegative = hasDelta && delta! < 0;
+  const deltaText = !hasDelta
+    ? null
+    : isPositive
+      ? `+${delta}`
+      : isNegative
+        ? `${delta}`
+        : "±0";
+  const deltaClass = isPositive
+    ? "text-emerald-600"
+    : isNegative
+      ? "text-red-600"
+      : "text-muted-foreground";
   return (
     <div className="flex items-baseline gap-1 text-[13px]">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium tabular-nums">{value}</span>
-      {typeof delta === "number" && (
-        <span
-          className={cn(
-            "tabular-nums",
-            isPos ? "text-emerald-600" : "text-red-600"
-          )}
-        >
-          {isPos ? `+${delta}` : delta}
-        </span>
+      {hasDelta && deltaText !== null && (
+        <span className={cn("tabular-nums", deltaClass)}>{deltaText}</span>
       )}
     </div>
   );
