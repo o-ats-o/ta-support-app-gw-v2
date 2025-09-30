@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +9,10 @@ import TrendChartPanel from "./TrendChartPanel";
 import MiroWorkDetail from "./MiroWorkDetail";
 import ConversationLogs from "./ConversationLogs";
 import ScenarioPanel from "./ScenarioPanel";
+
+const STORAGE_KEY_BASE = "groupDetail:activeTab";
+const TAB_ORDER = ["trend", "logs", "scenario", "miro"] as const;
+type TabValue = (typeof TAB_ORDER)[number];
 
 type Props = {
   data: DashboardData;
@@ -24,6 +29,35 @@ export function GroupDetail({
   timeseriesLoading,
   logsLoading,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<TabValue>("trend");
+
+  const storageKey = useMemo(() => {
+    if (typeof window === "undefined") {
+      return STORAGE_KEY_BASE;
+    }
+    const path = window.location?.pathname ?? "";
+    return `${STORAGE_KEY_BASE}:${path}`;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored && (TAB_ORDER as readonly string[]).includes(stored)) {
+      setActiveTab(stored as TabValue);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(storageKey, activeTab);
+  }, [activeTab, storageKey]);
+
+  const handleTabChange = useCallback((value: string) => {
+    if ((TAB_ORDER as readonly string[]).includes(value)) {
+      setActiveTab(value as TabValue);
+    }
+  }, []);
+
   const hasSelection = Boolean(selected);
   const statusMessage = loading
     ? "データを読み込んでいます…"
@@ -50,7 +84,7 @@ export function GroupDetail({
         )}
       </div>
 
-      <Tabs defaultValue="trend" className="-mt-1">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="-mt-1">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="trend" disabled={!hasSelection}>
             時間推移グラフ
