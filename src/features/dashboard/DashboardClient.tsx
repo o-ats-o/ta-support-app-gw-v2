@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GroupList } from "@/components/dashboard/GroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
-import type { GroupInfo } from "@/lib/types";
+import { createEmptyTimeseries } from "@/lib/types";
+import type { DashboardData, GroupInfo } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
-import { fetchGroupsByRange } from "@/lib/api";
+import { fetchGroupTimeseriesByRange, fetchGroupsByRange } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
@@ -15,6 +16,13 @@ const STORAGE_KEY = "dashboard:selectedGroup";
 export default function DashboardClient() {
   const base = useMemo(() => dashboardMock, []);
   const [groups, setGroups] = useState<GroupInfo[]>(base.groups);
+  const [timeseries, setTimeseries] = useState<DashboardData["timeseries"]>(
+    () => ({
+      speech: [...base.timeseries.speech],
+      sentiment: [...base.timeseries.sentiment],
+      miroOps: [...base.timeseries.miroOps],
+    })
+  );
   const [selectedId, setSelectedId] = useState<string>(
     base.groups[0]?.id ?? "A"
   );
@@ -24,9 +32,29 @@ export default function DashboardClient() {
   const [currentRange, setCurrentRange] = useState<string>(DEFAULT_TIME_RANGE);
   const [loading, setLoading] = useState(false);
   const cacheRef = useRef<Map<string, GroupInfo[]>>(new Map());
+  const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
+    new Map()
+  );
+  const activeTimeseriesKeyRef = useRef<string | null>(null);
 
   const getCacheKey = useCallback(
     (date: string, range: string) => `${date}::${range}`,
+    []
+  );
+
+  const getTimeseriesCacheKey = useCallback(
+    (date: string, range: string, groupList: readonly GroupInfo[]) => {
+      const baseKey = `${date}::${range}`;
+      if (!groupList || groupList.length === 0) {
+        return `${baseKey}::empty`;
+      }
+      const ids = groupList
+        .map((g) => g.rawId ?? g.name ?? `Group ${g.id}`)
+        .map((id) => id.trim())
+        .filter((id): id is string => Boolean(id) && id.length > 0)
+        .sort((a, b) => a.localeCompare(b));
+      return `${baseKey}::${ids.join("|")}`;
+    },
     []
   );
 
@@ -37,7 +65,62 @@ export default function DashboardClient() {
     );
   }, []);
 
-  const data = useMemo(() => ({ ...base, groups }), [base, groups]);
+  const ensureTimeseriesForRange = useCallback(
+    async ({
+      date,
+      range,
+      groups: groupList,
+      force = false,
+    }: {
+      date: string;
+      range: string;
+      groups: readonly GroupInfo[];
+      force?: boolean;
+    }) => {
+      if (!groupList || groupList.length === 0) {
+        setTimeseries(createEmptyTimeseries());
+        return;
+      }
+
+      const key = getTimeseriesCacheKey(date, range, groupList);
+      if (!force) {
+        const cached = timeseriesCacheRef.current.get(key);
+        if (cached) {
+          setTimeseries(cached);
+          return;
+        }
+      }
+
+      activeTimeseriesKeyRef.current = key;
+      try {
+        const ts = await fetchGroupTimeseriesByRange(
+          { date, timeRange: range },
+          groupList
+        );
+        if (activeTimeseriesKeyRef.current !== key) return;
+        timeseriesCacheRef.current.set(key, ts);
+        setTimeseries(ts);
+      } catch (error) {
+        console.error("[list-ver] fetch timeseries failed", {
+          date,
+          range,
+          error,
+        });
+        if (!force) {
+          const fallback = timeseriesCacheRef.current.get(key);
+          if (fallback) {
+            setTimeseries(fallback);
+          }
+        }
+      }
+    },
+    [getTimeseriesCacheKey]
+  );
+
+  const data = useMemo(
+    () => ({ ...base, groups, timeseries }),
+    [base, groups, timeseries]
+  );
   const selected =
     data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
 
@@ -77,6 +160,12 @@ export default function DashboardClient() {
           });
           setLoading(false);
           applyGroups(cached);
+          void ensureTimeseriesForRange({
+            date,
+            range,
+            groups: cached,
+            force,
+          });
           return;
         }
       }
@@ -95,13 +184,27 @@ export default function DashboardClient() {
         console.log("[list-ver] fetch success", { count: nextGroups.length });
         cacheRef.current.set(key, nextGroups);
         applyGroups(nextGroups);
+        void ensureTimeseriesForRange({
+          date,
+          range,
+          groups: nextGroups,
+          force,
+        });
       } catch (err) {
         console.error("[list-ver] fetch failed", err);
+        const fallback = cacheRef.current.get(key);
+        if (fallback) {
+          void ensureTimeseriesForRange({
+            date,
+            range,
+            groups: fallback,
+          });
+        }
       } finally {
         setLoading(false);
       }
     },
-    [applyGroups, getCacheKey]
+    [applyGroups, ensureTimeseriesForRange, getCacheKey]
   );
 
   const handleTimeChange = useCallback(

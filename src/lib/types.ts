@@ -11,6 +11,11 @@ export interface GroupSummaryMetrics {
 
 export interface GroupInfo {
   id: GroupId;
+  /**
+   * API から返却される生のグループID。
+   * 時系列データの取得時などで利用する。
+   */
+  rawId?: string;
   name: string; // 表示名（Group A など）
   color: string; // グラフ用カラー
   metrics: GroupSummaryMetrics;
@@ -74,4 +79,12 @@ export interface TalkScenarioItem {
 export interface TalkScenario {
   title: string; // 見出し
   bullets: TalkScenarioItem[]; // 箇条書き
+}
+
+export function createEmptyTimeseries(): DashboardData["timeseries"] {
+  return {
+    speech: [],
+    sentiment: [],
+    miroOps: [],
+  };
 }

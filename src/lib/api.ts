@@ -1,5 +1,11 @@
-import type { GroupId, GroupInfo, RecommendationGroupItem } from "./types";
-import { GROUP_COLORS } from "./types";
+import type {
+  DashboardData,
+  GroupId,
+  GroupInfo,
+  RecommendationGroupItem,
+  TimeSeriesPoint,
+} from "./types";
+import { GROUP_COLORS, createEmptyTimeseries } from "./types";
 
 const API_BASE_URL = (() => {
   const value = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -30,6 +36,7 @@ function buildApiUrl(path: string, params: URLSearchParams): string {
 
 const SESSIONS_PATH = "api/sessions";
 const RECOMMENDATIONS_PATH = "api/groups/recommendations";
+const TIMESERIES_PATH = "api/groups/timeseries";
 const TIME_RANGE_RE = /^(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})$/;
 
 export type SessionIsoRange = {
@@ -61,6 +68,31 @@ type ApiRecommendationItem = ApiGroupItem & {
   reasons?: string[];
 };
 
+type ApiTimeseriesBucketItem = {
+  group_id: string;
+  utterances?: number;
+  miro?: number;
+  sentiment_avg?: number;
+};
+
+type ApiTimeseriesBucket = {
+  start?: string;
+  end?: string;
+  items?: ApiTimeseriesBucketItem[];
+};
+
+type ApiTimeseriesResponse = {
+  window_ms?: number;
+  buckets?: ApiTimeseriesBucket[];
+};
+
+const JST_TIME_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
 const VALID_IDS: readonly GroupId[] = [
   "A",
   "B",
@@ -80,11 +112,139 @@ function toGroupId(input: string): GroupId | null {
     : null;
 }
 
+function formatBucketLabel(input?: string): string {
+  if (!input) return "";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return input;
+  }
+  try {
+    return JST_TIME_FORMATTER.format(date);
+  } catch {
+    return date.toISOString().slice(11, 16);
+  }
+}
+
+function toFiniteNumber(value: unknown): number {
+  const num = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function collectRawGroupIds(groups: readonly GroupInfo[]): string[] {
+  const unique = new Set<string>();
+  for (const g of groups) {
+    const raw = g.rawId?.trim();
+    if (raw) {
+      unique.add(raw);
+      continue;
+    }
+    // フォールバック: Group {id} 形式 または ID 自体
+    if (g.name) unique.add(g.name);
+    unique.add(`Group ${g.id}`);
+    unique.add(g.id);
+  }
+  return Array.from(unique);
+}
+
+function buildTimeseriesUrl(
+  groupIds: readonly string[],
+  { start, end }: SessionIsoRange
+): string {
+  const params = new URLSearchParams();
+  params.set("group_ids", groupIds.join(","));
+  params.set("start", start);
+  if (end) params.set("end", end);
+  return buildApiUrl(TIMESERIES_PATH, params);
+}
+
+async function requestTimeseries(
+  input: { groupIds: readonly string[] } & SessionIsoRange
+): Promise<ApiTimeseriesResponse> {
+  const { groupIds, start, end } = input;
+  const url = buildTimeseriesUrl(groupIds, { start, end });
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch timeseries: ${res.status}`);
+  }
+  return (await res.json()) as ApiTimeseriesResponse;
+}
+
+function mapTimeseriesResponse(
+  response: ApiTimeseriesResponse,
+  groups: readonly GroupInfo[]
+): DashboardData["timeseries"] {
+  if (!response || !Array.isArray(response.buckets)) {
+    return createEmptyTimeseries();
+  }
+
+  const groupLookup = new Map<string, GroupId>();
+  for (const g of groups) {
+    if (g.rawId) {
+      groupLookup.set(g.rawId, g.id);
+      groupLookup.set(g.rawId.trim(), g.id);
+    }
+    groupLookup.set(`Group ${g.id}`, g.id);
+    groupLookup.set(g.id, g.id);
+  }
+
+  const speech: TimeSeriesPoint[] = [];
+  const sentiment: TimeSeriesPoint[] = [];
+  const miroOps: TimeSeriesPoint[] = [];
+
+  for (const bucket of response.buckets) {
+    const label = formatBucketLabel(bucket?.end ?? bucket?.start);
+    const speechPoint: TimeSeriesPoint = { time: label };
+    const sentimentPoint: TimeSeriesPoint = { time: label };
+    const miroPoint: TimeSeriesPoint = { time: label };
+
+    for (const g of groups) {
+      speechPoint[g.id] = 0;
+      sentimentPoint[g.id] = 0;
+      miroPoint[g.id] = 0;
+    }
+
+    for (const item of bucket.items ?? []) {
+      const gid =
+        groupLookup.get(item.group_id) ??
+        groupLookup.get(item.group_id.trim()) ??
+        toGroupId(item.group_id);
+      if (!gid) continue;
+      speechPoint[gid] = toFiniteNumber(item.utterances);
+      sentimentPoint[gid] = toFiniteNumber(item.sentiment_avg);
+      miroPoint[gid] = toFiniteNumber(item.miro);
+    }
+
+    speech.push(speechPoint);
+    sentiment.push(sentimentPoint);
+    miroOps.push(miroPoint);
+  }
+
+  return { speech, sentiment, miroOps };
+}
+
+async function requestGroupTimeseries(
+  range: SessionIsoRange,
+  groups: readonly GroupInfo[]
+): Promise<DashboardData["timeseries"]> {
+  const groupIds = collectRawGroupIds(groups);
+  if (groupIds.length === 0) {
+    return createEmptyTimeseries();
+  }
+
+  const response = await requestTimeseries({
+    groupIds,
+    start: range.start,
+    end: range.end,
+  });
+  return mapTimeseriesResponse(response, groups);
+}
+
 function mapApiItemToGroupInfo(item: ApiGroupItem): GroupInfo | null {
   const gid = toGroupId(item.group_id);
   if (!gid) return null;
   return {
     id: gid,
+    rawId: item.group_id,
     name: `Group ${gid}`,
     color: GROUP_COLORS[gid],
     metrics: {
@@ -249,4 +409,24 @@ export async function fetchGroupRecommendationsByRange(
   options?: { limit?: number }
 ): Promise<RecommendationGroupItem[]> {
   return requestRecommendations(jstDateTimeRangeToUtcIso(range), options);
+}
+
+export async function fetchGroupTimeseries(
+  range: SessionIsoRange,
+  groups: readonly GroupInfo[]
+): Promise<DashboardData["timeseries"]> {
+  if (!groups || groups.length === 0) {
+    return createEmptyTimeseries();
+  }
+  return requestGroupTimeseries(range, groups);
+}
+
+export async function fetchGroupTimeseriesByRange(
+  range: JstDateTimeRange,
+  groups: readonly GroupInfo[]
+): Promise<DashboardData["timeseries"]> {
+  if (!groups || groups.length === 0) {
+    return createEmptyTimeseries();
+  }
+  return requestGroupTimeseries(jstDateTimeRangeToUtcIso(range), groups);
 }

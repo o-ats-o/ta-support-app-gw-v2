@@ -6,6 +6,7 @@ const groupIds: GroupId[] = ["A", "B", "C", "D", "E", "F", "G"];
 export const dashboardMock: DashboardData = {
   groups: groupIds.map((id, idx) => ({
     id,
+    rawId: `Group ${id}`,
     name: `Group ${id}`,
     color: GROUP_COLORS[id],
     metrics: {
