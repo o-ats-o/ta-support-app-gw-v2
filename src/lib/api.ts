@@ -1,4 +1,5 @@
 import type {
+  ConversationLog,
   DashboardData,
   GroupId,
   GroupInfo,
@@ -37,6 +38,7 @@ function buildApiUrl(path: string, params: URLSearchParams): string {
 const SESSIONS_PATH = "api/sessions";
 const RECOMMENDATIONS_PATH = "api/groups/recommendations";
 const TIMESERIES_PATH = "api/groups/timeseries";
+const UTTERANCES_PATH = "api/utterances";
 const TIME_RANGE_RE = /^(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})$/;
 
 export type SessionIsoRange = {
@@ -86,9 +88,25 @@ type ApiTimeseriesResponse = {
   buckets?: ApiTimeseriesBucket[];
 };
 
+type ApiUtterance = {
+  session_id?: string;
+  group_id?: string;
+  utterance_text?: string;
+  created_at?: string;
+  speaker?: number | string | null;
+};
+
 const JST_TIME_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
   hour: "2-digit",
   minute: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
+const JST_TIME_WITH_SECONDS_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
   hour12: false,
   timeZone: "Asia/Tokyo",
 });
@@ -144,6 +162,142 @@ function collectRawGroupIds(groups: readonly GroupInfo[]): string[] {
     unique.add(g.id);
   }
   return Array.from(unique);
+}
+
+function buildGroupIdCandidates(group: GroupInfo): string[] {
+  const candidates = [
+    group.rawId,
+    typeof group.rawId === "string" ? group.rawId.trim() : undefined,
+    group.name,
+    typeof group.name === "string" ? group.name.trim() : undefined,
+    group.id,
+    `Group ${group.id}`,
+  ];
+
+  const unique = new Set<string>();
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    unique.add(trimmed);
+  }
+  return Array.from(unique);
+}
+
+function normalizeSpeakerId(input: unknown): string {
+  if (typeof input === "number" && Number.isFinite(input)) {
+    return `S${Math.max(0, Math.trunc(Math.abs(input)))}`;
+  }
+
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed) return "S?";
+    if (/^S\d+$/i.test(trimmed)) {
+      return `S${trimmed.replace(/^S/i, "")}`;
+    }
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) {
+      return `S${Math.max(0, Math.trunc(Math.abs(numeric)))}`;
+    }
+  }
+
+  return "S?";
+}
+
+type NormalizedUtterance = {
+  timestampMs: number;
+  speakerId: string;
+  text: string;
+  timestampLabel: string;
+};
+
+function mapUtterancesToConversationLogs({
+  utterances,
+  startMs,
+  endMs,
+  bucketCount,
+  bucketDurationMs,
+}: {
+  utterances: ApiUtterance[];
+  startMs: number;
+  endMs: number;
+  bucketCount: number;
+  bucketDurationMs: number;
+}): ConversationLog[] {
+  if (
+    !Array.isArray(utterances) ||
+    utterances.length === 0 ||
+    !Number.isFinite(startMs) ||
+    !Number.isFinite(endMs) ||
+    startMs >= endMs ||
+    bucketCount <= 0
+  ) {
+    return [];
+  }
+
+  const duration = bucketDurationMs > 0 ? bucketDurationMs : 5 * 60 * 1000;
+
+  const normalized: NormalizedUtterance[] = [];
+  for (const item of utterances) {
+    if (!item?.created_at) continue;
+    const created = new Date(item.created_at);
+    const createdMs = created.getTime();
+    if (!Number.isFinite(createdMs)) continue;
+    if (createdMs < startMs || createdMs > endMs) continue;
+
+    const text =
+      typeof item.utterance_text === "string"
+        ? item.utterance_text
+        : item.utterance_text != null
+        ? String(item.utterance_text)
+        : "";
+
+    normalized.push({
+      timestampMs: createdMs,
+      speakerId: normalizeSpeakerId(item.speaker),
+      text,
+      timestampLabel: JST_TIME_WITH_SECONDS_FORMATTER.format(created),
+    });
+  }
+
+  if (normalized.length === 0) {
+    return [];
+  }
+
+  normalized.sort((a, b) => a.timestampMs - b.timestampMs);
+
+  const buckets = Array.from({ length: bucketCount }, (_, idx) => {
+    const bucketStart = startMs + idx * duration;
+    const bucketEnd = bucketStart + duration;
+    return {
+      start: bucketStart,
+      end: bucketEnd,
+      label: JST_TIME_FORMATTER.format(new Date(bucketEnd)),
+      turns: [] as ConversationLog["turns"],
+    };
+  });
+
+  for (const item of normalized) {
+    let index = Math.floor((item.timestampMs - startMs) / duration);
+    if (!Number.isFinite(index)) continue;
+    if (index < 0) {
+      index = 0;
+    } else if (index >= buckets.length) {
+      index = buckets.length - 1;
+    }
+    buckets[index]?.turns.push({
+      speakerId: item.speakerId,
+      text: item.text,
+      timestamp: item.timestampLabel,
+    });
+  }
+
+  return buckets
+    .filter((bucket) => bucket.turns.length > 0)
+    .map((bucket) => ({
+      timeLabel: bucket.label,
+      turns: bucket.turns,
+    }));
 }
 
 function buildTimeseriesUrl(
@@ -335,6 +489,91 @@ async function requestRecommendations(
         ? a.rank - b.rank
         : a.score - b.score
     );
+}
+
+export async function fetchGroupConversationLogsByRange(
+  range: JstDateTimeRange,
+  group: GroupInfo,
+  options?: {
+    limit?: number;
+    offset?: number;
+    bucketCount?: number;
+  }
+): Promise<ConversationLog[]> {
+  if (!group) {
+    return [];
+  }
+
+  const bucketCount = Math.max(1, options?.bucketCount ?? 5);
+  const { start, end } = jstDateTimeRangeToUtcIso(range);
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const startMs = startDate.getTime();
+  const endMs = endDate.getTime();
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs >= endMs) {
+    return [];
+  }
+
+  const fallbackDuration = 5 * 60 * 1000;
+  let bucketDurationMs = endMs - startMs;
+  if (!Number.isFinite(bucketDurationMs) || bucketDurationMs <= 0) {
+    bucketDurationMs = fallbackDuration;
+  }
+
+  const expandedStartMs = endMs - bucketCount * bucketDurationMs;
+  const limit = Math.max(1, Math.min(options?.limit ?? bucketCount * 60, 500));
+  const offset = Math.max(0, options?.offset ?? 0);
+
+  const rangeStartIso = new Date(expandedStartMs).toISOString();
+  const rangeEndIso = endDate.toISOString();
+
+  const candidates = buildGroupIdCandidates(group);
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  let lastError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      const params = new URLSearchParams();
+      params.set("group_id", candidate);
+      params.set("limit", String(limit));
+      params.set("offset", String(offset));
+      params.set("start_time", rangeStartIso);
+      params.set("end_time", rangeEndIso);
+
+      const url = buildApiUrl(UTTERANCES_PATH, params);
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+        lastError = new Error(`Failed to fetch utterances: ${res.status}`);
+        continue;
+      }
+
+      const payload = await res.json();
+      const utterances = Array.isArray(payload)
+        ? (payload as ApiUtterance[])
+        : [];
+
+      return mapUtterancesToConversationLogs({
+        utterances,
+        startMs: expandedStartMs,
+        endMs,
+        bucketCount,
+        bucketDurationMs,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Failed to fetch utterances");
+  }
+
+  return [];
 }
 
 function fallbackRange(): SessionIsoRange {

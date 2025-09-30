@@ -5,9 +5,13 @@ import { GroupList } from "@/components/dashboard/GroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
 import { createEmptyTimeseries } from "@/lib/types";
-import type { DashboardData, GroupInfo } from "@/lib/types";
+import type { ConversationLog, DashboardData, GroupInfo } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
-import { fetchGroupTimeseriesByRange, fetchGroupsByRange } from "@/lib/api";
+import {
+  fetchGroupConversationLogsByRange,
+  fetchGroupTimeseriesByRange,
+  fetchGroupsByRange,
+} from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
@@ -20,6 +24,8 @@ export default function DashboardClient() {
     () => createEmptyTimeseries()
   );
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
+  const [logs, setLogs] = useState<ConversationLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
@@ -31,6 +37,8 @@ export default function DashboardClient() {
     new Map()
   );
   const activeTimeseriesKeyRef = useRef<string | null>(null);
+  const logsCacheRef = useRef<Map<string, ConversationLog[]>>(new Map());
+  const activeLogsKeyRef = useRef<string | null>(null);
 
   const getCacheKey = useCallback(
     (date: string, range: string) => `${date}::${range}`,
@@ -53,6 +61,14 @@ export default function DashboardClient() {
     []
   );
 
+  const getLogsCacheKey = useCallback(
+    (date: string, range: string, group?: GroupInfo | null) => {
+      const identifier =
+        group?.rawId?.trim() || group?.name?.trim() || group?.id;
+      return `${date}::${range}::${identifier ?? "unknown"}`;
+    },
+    []
+  );
   const applyGroups = useCallback((nextGroups: GroupInfo[]) => {
     setGroups(nextGroups);
     setSelectedId((prev) =>
@@ -120,11 +136,74 @@ export default function DashboardClient() {
   );
 
   const data = useMemo(
-    () => ({ ...base, groups, timeseries }),
-    [base, groups, timeseries]
+    () => ({ ...base, groups, timeseries, logs }),
+    [base, groups, timeseries, logs]
   );
   const selected =
     data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
+
+  const fetchLogsForSelection = useCallback(
+    async ({
+      date,
+      range,
+      group,
+      force = false,
+    }: {
+      date: string;
+      range: string;
+      group?: GroupInfo | null;
+      force?: boolean;
+    }) => {
+      if (!group) {
+        setLogs([]);
+        setLogsLoading(false);
+        return;
+      }
+
+      const key = getLogsCacheKey(date, range, group);
+      if (!force) {
+        const cached = logsCacheRef.current.get(key);
+        if (cached) {
+          setLogs(cached);
+          setLogsLoading(false);
+          return;
+        }
+      }
+
+      activeLogsKeyRef.current = key;
+      setLogsLoading(true);
+      try {
+        const result = await fetchGroupConversationLogsByRange(
+          { date, timeRange: range },
+          group,
+          { bucketCount: 5 }
+        );
+        if (activeLogsKeyRef.current !== key) return;
+        logsCacheRef.current.set(key, result);
+        setLogs(result);
+      } catch (error) {
+        console.error("[list-ver] fetch logs failed", {
+          date,
+          range,
+          group,
+          error,
+        });
+        if (!force) {
+          const fallback = logsCacheRef.current.get(key);
+          if (fallback) {
+            setLogs(fallback);
+          } else if (activeLogsKeyRef.current === key) {
+            setLogs([]);
+          }
+        }
+      } finally {
+        if (activeLogsKeyRef.current === key) {
+          setLogsLoading(false);
+        }
+      }
+    },
+    [getLogsCacheKey]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -231,6 +310,21 @@ export default function DashboardClient() {
     [currentRange, fetchGroupsForRange]
   );
 
+  useEffect(() => {
+    if (!selectedDate || !currentRange) return;
+    if (!groups || groups.length === 0) {
+      setLogs([]);
+      setLogsLoading(false);
+      return;
+    }
+    const group = groups.find((g) => g.id === selectedId) ?? groups[0];
+    void fetchLogsForSelection({
+      date: selectedDate,
+      range: currentRange,
+      group,
+    });
+  }, [currentRange, fetchLogsForSelection, groups, selectedDate, selectedId]);
+
   return (
     <div className="min-h-screen">
       <AppHeader date={selectedDate} onDateChange={handleDateChange} />
@@ -252,6 +346,7 @@ export default function DashboardClient() {
             selected={selected}
             loading={loading}
             timeseriesLoading={timeseriesLoading}
+            logsLoading={logsLoading}
           />
         </div>
       </main>

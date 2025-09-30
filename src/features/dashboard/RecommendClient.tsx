@@ -6,12 +6,14 @@ import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
 import { createEmptyTimeseries } from "@/lib/types";
 import type {
+  ConversationLog,
   DashboardData,
   GroupInfo,
   RecommendationGroupItem,
 } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
 import {
+  fetchGroupConversationLogsByRange,
   fetchGroupRecommendationsByRange,
   fetchGroupTimeseriesByRange,
 } from "@/lib/api";
@@ -27,6 +29,8 @@ export default function RecommendClient() {
     () => createEmptyTimeseries()
   );
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
+  const [logs, setLogs] = useState<ConversationLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<
     RecommendationGroupItem[]
   >([]);
@@ -42,10 +46,12 @@ export default function RecommendClient() {
     new Map()
   );
   const activeTimeseriesKeyRef = useRef<string | null>(null);
+  const logsCacheRef = useRef<Map<string, ConversationLog[]>>(new Map());
+  const activeLogsKeyRef = useRef<string | null>(null);
 
   const data = useMemo(
-    () => ({ ...base, groups, timeseries }),
-    [base, groups, timeseries]
+    () => ({ ...base, groups, timeseries, logs }),
+    [base, groups, timeseries, logs]
   );
 
   const selected =
@@ -85,6 +91,15 @@ export default function RecommendClient() {
     []
   );
 
+  const getLogsCacheKey = useCallback(
+    (date: string, range: string, group?: GroupInfo | null) => {
+      const identifier =
+        group?.rawId?.trim() || group?.name?.trim() || group?.id;
+      return `${date}::${range}::${identifier ?? "unknown"}`;
+    },
+    []
+  );
+
   const applyRecommendations = useCallback(
     (items: RecommendationGroupItem[]): GroupInfo[] => {
       setRecommendations(items);
@@ -96,12 +111,76 @@ export default function RecommendClient() {
 
       const nextGroups = items.map((item) => item.group);
       setGroups(nextGroups);
+
       setSelectedId((prev) =>
         nextGroups.some((g) => g.id === prev) ? prev : (nextGroups[0]?.id ?? "")
       );
       return nextGroups;
     },
     []
+  );
+
+  const fetchLogsForSelection = useCallback(
+    async ({
+      date,
+      range,
+      group,
+      force = false,
+    }: {
+      date: string;
+      range: string;
+      group?: GroupInfo | null;
+      force?: boolean;
+    }) => {
+      if (!group) {
+        setLogs([]);
+        setLogsLoading(false);
+        return;
+      }
+
+      const key = getLogsCacheKey(date, range, group);
+      if (!force) {
+        const cached = logsCacheRef.current.get(key);
+        if (cached) {
+          setLogs(cached);
+          setLogsLoading(false);
+          return;
+        }
+      }
+
+      activeLogsKeyRef.current = key;
+      setLogsLoading(true);
+      try {
+        const result = await fetchGroupConversationLogsByRange(
+          { date, timeRange: range },
+          group,
+          { bucketCount: 5 }
+        );
+        if (activeLogsKeyRef.current !== key) return;
+        logsCacheRef.current.set(key, result);
+        setLogs(result);
+      } catch (error) {
+        console.error("[recommend-ver] fetch logs failed", {
+          date,
+          range,
+          group,
+          error,
+        });
+        if (!force) {
+          const fallback = logsCacheRef.current.get(key);
+          if (fallback) {
+            setLogs(fallback);
+          } else if (activeLogsKeyRef.current === key) {
+            setLogs([]);
+          }
+        }
+      } finally {
+        if (activeLogsKeyRef.current === key) {
+          setLogsLoading(false);
+        }
+      }
+    },
+    [getLogsCacheKey]
   );
 
   const ensureTimeseriesForRange = useCallback(
@@ -242,6 +321,21 @@ export default function RecommendClient() {
     void fetchRecommendations({ date: selectedDate, range: timeRange });
   }, [fetchRecommendations, selectedDate, timeRange]);
 
+  useEffect(() => {
+    if (!selectedDate || !timeRange) return;
+    if (!groups || groups.length === 0) {
+      setLogs([]);
+      setLogsLoading(false);
+      return;
+    }
+    const group = groups.find((g) => g.id === selectedId) ?? groups[0];
+    void fetchLogsForSelection({
+      date: selectedDate,
+      range: timeRange,
+      group,
+    });
+  }, [fetchLogsForSelection, groups, selectedDate, selectedId, timeRange]);
+
   const handleTimeChange = useCallback(
     (range: string) => {
       if (!range) return;
@@ -292,6 +386,7 @@ export default function RecommendClient() {
             selected={selected}
             loading={loading}
             timeseriesLoading={timeseriesLoading}
+            logsLoading={logsLoading}
           />
         </div>
       </main>

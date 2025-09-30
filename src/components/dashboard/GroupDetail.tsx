@@ -14,6 +14,7 @@ type Props = {
   selected?: GroupInfo | null;
   loading?: boolean;
   timeseriesLoading?: boolean;
+  logsLoading?: boolean;
 };
 
 export function GroupDetail({
@@ -21,6 +22,7 @@ export function GroupDetail({
   selected,
   loading = false,
   timeseriesLoading,
+  logsLoading,
 }: Props) {
   const hasSelection = Boolean(selected);
   const statusMessage = loading
@@ -85,7 +87,11 @@ export function GroupDetail({
         </TabsContent>
         <TabsContent value="logs" className="pt-4">
           {hasSelection && selected ? (
-            <ConversationLogs data={data} selected={selected} />
+            <ConversationLogs
+              data={data}
+              selected={selected}
+              loading={Boolean(loading) || Boolean(logsLoading)}
+            />
           ) : (
             renderPlaceholder(380)
           )}
