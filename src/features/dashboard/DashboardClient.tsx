@@ -23,6 +23,7 @@ export default function DashboardClient() {
       miroOps: [...base.timeseries.miroOps],
     })
   );
+  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string>(
     base.groups[0]?.id ?? "A"
   );
@@ -79,6 +80,7 @@ export default function DashboardClient() {
     }) => {
       if (!groupList || groupList.length === 0) {
         setTimeseries(createEmptyTimeseries());
+        setTimeseriesLoading(false);
         return;
       }
 
@@ -87,11 +89,13 @@ export default function DashboardClient() {
         const cached = timeseriesCacheRef.current.get(key);
         if (cached) {
           setTimeseries(cached);
+          setTimeseriesLoading(false);
           return;
         }
       }
 
       activeTimeseriesKeyRef.current = key;
+      setTimeseriesLoading(true);
       try {
         const ts = await fetchGroupTimeseriesByRange(
           { date, timeRange: range },
@@ -111,6 +115,10 @@ export default function DashboardClient() {
           if (fallback) {
             setTimeseries(fallback);
           }
+        }
+      } finally {
+        if (activeTimeseriesKeyRef.current === key) {
+          setTimeseriesLoading(false);
         }
       }
     },
@@ -245,7 +253,13 @@ export default function DashboardClient() {
           />
         </div>
         <div className="lg:sticky lg:top-14 self-start">
-          {selected && <GroupDetail data={data} selected={selected} />}
+          {selected && (
+            <GroupDetail
+              data={data}
+              selected={selected}
+              timeseriesLoading={timeseriesLoading}
+            />
+          )}
         </div>
       </main>
     </div>

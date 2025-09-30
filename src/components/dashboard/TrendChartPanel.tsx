@@ -15,6 +15,7 @@ type Props = {
   groups: GroupInfo[];
   selected: GroupInfo;
   defaultSeries?: "speech" | "sentiment" | "miroOps";
+  timeseriesLoading?: boolean;
 };
 
 export default function TrendChartPanel({
@@ -22,6 +23,7 @@ export default function TrendChartPanel({
   groups,
   selected,
   defaultSeries = "speech",
+  timeseriesLoading = false,
 }: Props) {
   const colors = Object.fromEntries(groups.map((g) => [g.id, g.color]));
   const [series, setSeries] = useState<"speech" | "sentiment" | "miroOps">(
@@ -50,7 +52,20 @@ export default function TrendChartPanel({
         </button>
       </div>
 
-      <div className="-mt-4 h-[360px]">
+      <div
+        className="relative -mt-4 h-[360px]"
+        aria-busy={timeseriesLoading}
+        aria-live="polite"
+      >
+        {timeseriesLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <div
+              className="h-12 w-12 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"
+              role="status"
+              aria-label="時間推移を読み込み中"
+            />
+          </div>
+        )}
         <MultiLineChart
           data={data.timeseries[series]}
           colors={colors}

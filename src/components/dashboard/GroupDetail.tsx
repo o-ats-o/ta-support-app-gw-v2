@@ -11,9 +11,10 @@ import ScenarioPanel from "./ScenarioPanel";
 type Props = {
   data: DashboardData;
   selected: GroupInfo;
+  timeseriesLoading?: boolean;
 };
 
-export function GroupDetail({ data, selected }: Props) {
+export function GroupDetail({ data, selected, timeseriesLoading }: Props) {
   return (
     <Card className="p-3 h-full">
       <div className="flex items-center gap-2">
@@ -34,6 +35,7 @@ export function GroupDetail({ data, selected }: Props) {
             data={data}
             groups={data.groups}
             selected={selected}
+            timeseriesLoading={timeseriesLoading}
             defaultSeries="speech"
           />
         </TabsContent>
