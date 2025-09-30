@@ -15,23 +15,17 @@ const STORAGE_KEY = "dashboard:selectedGroup";
 
 export default function DashboardClient() {
   const base = useMemo(() => dashboardMock, []);
-  const [groups, setGroups] = useState<GroupInfo[]>(base.groups);
+  const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [timeseries, setTimeseries] = useState<DashboardData["timeseries"]>(
-    () => ({
-      speech: [...base.timeseries.speech],
-      sentiment: [...base.timeseries.sentiment],
-      miroOps: [...base.timeseries.miroOps],
-    })
+    () => createEmptyTimeseries()
   );
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>(
-    base.groups[0]?.id ?? "A"
-  );
+  const [selectedId, setSelectedId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
   const [currentRange, setCurrentRange] = useState<string>(DEFAULT_TIME_RANGE);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const cacheRef = useRef<Map<string, GroupInfo[]>>(new Map());
   const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
     new Map()
@@ -62,7 +56,7 @@ export default function DashboardClient() {
   const applyGroups = useCallback((nextGroups: GroupInfo[]) => {
     setGroups(nextGroups);
     setSelectedId((prev) =>
-      nextGroups.some((g) => g.id === prev) ? prev : (nextGroups[0]?.id ?? prev)
+      nextGroups.some((g) => g.id === prev) ? prev : (nextGroups[0]?.id ?? "")
     );
   }, []);
 

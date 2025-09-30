@@ -22,26 +22,20 @@ const STORAGE_KEY = "recommend:selectedGroup";
 
 export default function RecommendClient() {
   const base = useMemo(() => dashboardMock, []);
-  const [groups, setGroups] = useState<GroupInfo[]>(base.groups);
+  const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [timeseries, setTimeseries] = useState<DashboardData["timeseries"]>(
-    () => ({
-      speech: [...base.timeseries.speech],
-      sentiment: [...base.timeseries.sentiment],
-      miroOps: [...base.timeseries.miroOps],
-    })
+    () => createEmptyTimeseries()
   );
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<
     RecommendationGroupItem[]
   >([]);
-  const [selectedId, setSelectedId] = useState<string>(
-    base.groups[0]?.id ?? "A"
-  );
+  const [selectedId, setSelectedId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
   const [timeRange, setTimeRange] = useState<string>(DEFAULT_TIME_LABEL);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const cacheRef = useRef<Map<string, RecommendationGroupItem[]>>(new Map());
   const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
@@ -55,9 +49,7 @@ export default function RecommendClient() {
   );
 
   const selected =
-    data.groups.find((g) => g.id === selectedId) ??
-    data.groups[0] ??
-    base.groups[0];
+    data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -96,26 +88,20 @@ export default function RecommendClient() {
   const applyRecommendations = useCallback(
     (items: RecommendationGroupItem[]): GroupInfo[] => {
       setRecommendations(items);
-      if (items.length > 0) {
-        const nextGroups = items.map((item) => item.group);
-        setGroups(nextGroups);
-        setSelectedId((prev) =>
-          nextGroups.some((g) => g.id === prev)
-            ? prev
-            : (nextGroups[0]?.id ?? prev)
-        );
-        return nextGroups;
+      if (items.length === 0) {
+        setGroups([]);
+        setSelectedId("");
+        return [];
       }
 
-      setGroups(base.groups);
+      const nextGroups = items.map((item) => item.group);
+      setGroups(nextGroups);
       setSelectedId((prev) =>
-        base.groups.some((g) => g.id === prev)
-          ? prev
-          : (base.groups[0]?.id ?? prev)
+        nextGroups.some((g) => g.id === prev) ? prev : (nextGroups[0]?.id ?? "")
       );
-      return base.groups;
+      return nextGroups;
     },
-    [base]
+    []
   );
 
   const ensureTimeseriesForRange = useCallback(
@@ -198,6 +184,7 @@ export default function RecommendClient() {
             cached: cached.length,
           });
           setError(null);
+          setLoading(false);
           const nextGroups = applyRecommendations(cached);
           void ensureTimeseriesForRange({
             date,
