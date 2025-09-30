@@ -287,13 +287,12 @@ export default function RecommendClient() {
           />
         </div>
         <div className="lg:sticky lg:top-14 self-start">
-          {selected && (
-            <GroupDetail
-              data={data}
-              selected={selected}
-              timeseriesLoading={timeseriesLoading}
-            />
-          )}
+          <GroupDetail
+            data={data}
+            selected={selected}
+            loading={loading}
+            timeseriesLoading={timeseriesLoading}
+          />
         </div>
       </main>
     </div>
