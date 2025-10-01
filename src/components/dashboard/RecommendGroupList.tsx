@@ -184,7 +184,7 @@ export default function RecommendGroupList({
       </div>
 
       <div className="-mt-2">
-        <div className="text-sm text-muted-foreground bg-muted px-3 py-2 ">
+        <div className="text-sm text-muted-foreground bg-muted px-3 py-2 mb-2">
           その他のグループ
         </div>
         {loading ? (
