@@ -71,10 +71,7 @@ function GroupRow({
     <button
       type="button"
       className={cn(
-        "w-full px-3 py-3 text-left rounded-md transition-colors border",
-        variant === "recommended"
-          ? "border-red-300 bg-white"
-          : "border-transparent",
+        "w-full px-3 py-2 text-left rounded-md transition-colors border border-transparent",
         active ? "ring-2 ring-indigo-300" : "hover:bg-muted/50"
       )}
       onClick={onClick}
