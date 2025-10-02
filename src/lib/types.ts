@@ -88,3 +88,41 @@ export function createEmptyTimeseries(): DashboardData["timeseries"] {
     miroOps: [],
   };
 }
+
+export type MiroItem = {
+  id?: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
+export type MiroDeletedItem = {
+  id: string;
+  type?: string;
+};
+
+export type MiroDiffRecord = {
+  boardId: string;
+  diffAt: string;
+  added: MiroItem[];
+  updated: MiroItem[];
+  deleted: MiroDeletedItem[];
+};
+
+export type MiroItemRecord = {
+  id: string;
+  type?: string;
+  data: Record<string, unknown>;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  deletedAt?: string | null;
+};
+
+export type MiroDiffSummary = {
+  added: number;
+  updated: number;
+  deleted: number;
+  total: number;
+  diffCount: number;
+  boardId?: string;
+  lastDiffAt?: string;
+};

@@ -3,6 +3,8 @@ import type {
   DashboardData,
   GroupId,
   GroupInfo,
+  MiroDiffRecord,
+  MiroItemRecord,
   RecommendationGroupItem,
   TimeSeriesPoint,
 } from "./types";
@@ -39,6 +41,8 @@ const SESSIONS_PATH = "api/sessions";
 const RECOMMENDATIONS_PATH = "api/groups/recommendations";
 const TIMESERIES_PATH = "api/groups/timeseries";
 const UTTERANCES_PATH = "api/utterances";
+const MIRO_DIFFS_PATH = "api/miro/diffs";
+const MIRO_ITEMS_PATH = "api/miro/items";
 const TIME_RANGE_RE = /^(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})$/;
 
 export type SessionIsoRange = {
@@ -94,6 +98,34 @@ type ApiUtterance = {
   utterance_text?: string;
   created_at?: string;
   speaker?: number | string | null;
+};
+
+type ApiMiroDeletedItem = {
+  id?: string | number | null;
+  type?: string | null;
+};
+
+type ApiMiroDiff = {
+  boardId?: string;
+  board_id?: string;
+  diffAt?: string;
+  diff_at?: string;
+  added?: unknown[];
+  updated?: unknown[];
+  deleted?: ApiMiroDeletedItem[];
+};
+
+type ApiMiroItem = {
+  id?: string;
+  item_id?: string;
+  type?: string;
+  data?: Record<string, unknown>;
+  firstSeenAt?: string;
+  first_seen_at?: string;
+  lastSeenAt?: string;
+  last_seen_at?: string;
+  deletedAt?: string | null;
+  deleted_at?: string | null;
 };
 
 const JST_TIME_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
@@ -298,6 +330,120 @@ function mapUtterancesToConversationLogs({
       timeLabel: bucket.label,
       turns: bucket.turns,
     }));
+}
+
+function sanitizeMiroItem(
+  entry: unknown
+): MiroDiffRecord["added"][number] | null {
+  if (!entry || typeof entry !== "object") {
+    return null;
+  }
+  return entry as MiroDiffRecord["added"][number];
+}
+
+function sanitizeMiroDeletedItem(
+  entry: ApiMiroDeletedItem | undefined
+): MiroDiffRecord["deleted"][number] | null {
+  if (!entry) return null;
+  const rawId = entry.id;
+  const id =
+    typeof rawId === "string"
+      ? rawId.trim()
+      : typeof rawId === "number" && Number.isFinite(rawId)
+      ? String(rawId)
+      : "";
+  if (!id) return null;
+  const rawType = entry.type;
+  const type =
+    typeof rawType === "string" && rawType.trim().length > 0
+      ? rawType.trim()
+      : undefined;
+  return { id, type };
+}
+
+function mapApiMiroDiff(input: ApiMiroDiff | null | undefined): MiroDiffRecord | null {
+  if (!input) return null;
+  const boardIdRaw =
+    (typeof input.boardId === "string" && input.boardId.trim()) ||
+    (typeof input.board_id === "string" && input.board_id.trim()) ||
+    "";
+  const diffAtRaw =
+    (typeof input.diffAt === "string" && input.diffAt.trim()) ||
+    (typeof input.diff_at === "string" && input.diff_at.trim()) ||
+    "";
+
+  if (!boardIdRaw || !diffAtRaw) {
+    return null;
+  }
+
+  const added = Array.isArray(input.added)
+    ? input.added
+        .map(sanitizeMiroItem)
+        .filter((v): v is MiroDiffRecord["added"][number] => Boolean(v))
+    : [];
+  const updated = Array.isArray(input.updated)
+    ? input.updated
+        .map(sanitizeMiroItem)
+        .filter((v): v is MiroDiffRecord["updated"][number] => Boolean(v))
+    : [];
+  const deleted = Array.isArray(input.deleted)
+    ? input.deleted
+        .map(sanitizeMiroDeletedItem)
+        .filter((v): v is MiroDiffRecord["deleted"][number] => Boolean(v))
+    : [];
+
+  return {
+    boardId: boardIdRaw,
+    diffAt: diffAtRaw,
+    added,
+    updated,
+    deleted,
+  } satisfies MiroDiffRecord;
+}
+
+function mapApiMiroItem(input: ApiMiroItem | null | undefined): MiroItemRecord | null {
+  if (!input) return null;
+  const idRaw =
+    (typeof input.id === "string" && input.id.trim()) ||
+    (typeof input.item_id === "string" && input.item_id.trim()) ||
+    "";
+  if (!idRaw) {
+    return null;
+  }
+
+  const type =
+    typeof input.type === "string" && input.type.trim().length > 0
+      ? input.type.trim()
+      : undefined;
+
+  const data =
+    input.data && typeof input.data === "object" && !Array.isArray(input.data)
+      ? (input.data as Record<string, unknown>)
+      : {};
+
+  const firstSeenAt =
+    (typeof input.firstSeenAt === "string" && input.firstSeenAt.trim()) ||
+    (typeof input.first_seen_at === "string" && input.first_seen_at.trim()) ||
+    undefined;
+
+  const lastSeenAt =
+    (typeof input.lastSeenAt === "string" && input.lastSeenAt.trim()) ||
+    (typeof input.last_seen_at === "string" && input.last_seen_at.trim()) ||
+    undefined;
+
+  const deletedRaw =
+    (typeof input.deletedAt === "string" && input.deletedAt.trim()) ||
+    (typeof input.deleted_at === "string" && input.deleted_at.trim()) ||
+    (input.deletedAt === null || input.deleted_at === null ? null : undefined);
+
+  return {
+    id: idRaw,
+    type,
+    data,
+    firstSeenAt,
+    lastSeenAt,
+    deletedAt: deletedRaw,
+  } satisfies MiroItemRecord;
 }
 
 function buildTimeseriesUrl(
@@ -574,6 +720,262 @@ export async function fetchGroupConversationLogsByRange(
   }
 
   return [];
+}
+
+type FetchMiroDiffsParams = {
+  groupId: string;
+  since?: string;
+  until?: string;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+};
+
+type FetchMiroItemsParams = {
+  groupId: string;
+  includeDeleted?: boolean;
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+};
+
+async function requestMiroDiffs({
+  groupId,
+  since,
+  until,
+  limit,
+  offset,
+  signal,
+}: FetchMiroDiffsParams): Promise<MiroDiffRecord[]> {
+  const trimmedGroupId = groupId?.trim();
+  if (!trimmedGroupId) {
+    throw new Error("groupId is required to fetch Miro diffs");
+  }
+
+  const params = new URLSearchParams();
+  params.set("group_id", trimmedGroupId);
+  if (since) params.set("since", since);
+  if (until) params.set("until", until);
+  if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
+    params.set("limit", String(Math.trunc(limit)));
+  }
+  if (typeof offset === "number" && Number.isFinite(offset) && offset > 0) {
+    params.set("offset", String(Math.trunc(offset)));
+  }
+
+  const url = buildApiUrl(MIRO_DIFFS_PATH, params);
+  const res = await fetch(url, { cache: "no-store", signal });
+
+  if (!res.ok) {
+    let body: unknown = null;
+    let message = `Failed to fetch Miro diffs: ${res.status}`;
+    try {
+      body = await res.json();
+      if (body && typeof body === "object") {
+        const errorText =
+          typeof (body as { error?: unknown }).error === "string"
+            ? (body as { error: string }).error
+            : typeof (body as { detail?: unknown }).detail === "string"
+            ? (body as { detail: string }).detail
+            : undefined;
+        if (errorText) {
+          message = errorText;
+        }
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) {
+          body = text;
+          message = text;
+        }
+      } catch {
+        // ignore body parse errors
+      }
+    }
+
+    const error = new Error(message) as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    error.status = res.status;
+    error.body = body;
+    throw error;
+  }
+
+  const payload = (await res.json().catch(() => [])) as unknown;
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  return payload
+    .map((item) => mapApiMiroDiff(item as ApiMiroDiff))
+    .filter((v): v is MiroDiffRecord => Boolean(v));
+}
+
+export async function fetchMiroDiffs(
+  params: FetchMiroDiffsParams
+): Promise<MiroDiffRecord[]> {
+  return requestMiroDiffs(params);
+}
+
+export async function fetchMiroDiffsForGroup(
+  group: GroupInfo,
+  params?: Omit<FetchMiroDiffsParams, "groupId">
+): Promise<MiroDiffRecord[]> {
+  const candidates = buildGroupIdCandidates(group);
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  let lastError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      return await fetchMiroDiffs({ groupId: candidate, ...(params ?? {}) });
+    } catch (error) {
+      const status = (error as { status?: number } | null)?.status;
+      if (status === 404 || status === 400) {
+        lastError = error;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (lastError) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Failed to fetch Miro diffs");
+  }
+
+  return [];
+}
+
+async function requestMiroItems({
+  groupId,
+  includeDeleted,
+  limit,
+  offset,
+  signal,
+}: FetchMiroItemsParams): Promise<MiroItemRecord[]> {
+  const trimmedGroupId = groupId?.trim();
+  if (!trimmedGroupId) {
+    throw new Error("groupId is required to fetch Miro items");
+  }
+
+  const params = new URLSearchParams();
+  params.set("group_id", trimmedGroupId);
+  if (typeof includeDeleted === "boolean") {
+    params.set("include_deleted", includeDeleted ? "true" : "false");
+  }
+  if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
+    params.set("limit", String(Math.trunc(limit)));
+  }
+  if (typeof offset === "number" && Number.isFinite(offset) && offset > 0) {
+    params.set("offset", String(Math.trunc(offset)));
+  }
+
+  const url = buildApiUrl(MIRO_ITEMS_PATH, params);
+  const res = await fetch(url, { cache: "no-store", signal });
+
+  if (!res.ok) {
+    let body: unknown = null;
+    let message = `Failed to fetch Miro items: ${res.status}`;
+    try {
+      body = await res.json();
+      if (body && typeof body === "object") {
+        const errorText =
+          typeof (body as { error?: unknown }).error === "string"
+            ? (body as { error: string }).error
+            : typeof (body as { detail?: unknown }).detail === "string"
+            ? (body as { detail: string }).detail
+            : undefined;
+        if (errorText) {
+          message = errorText;
+        }
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) {
+          body = text;
+          message = text;
+        }
+      } catch {
+        // ignore body parse errors
+      }
+    }
+
+    const error = new Error(message) as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    error.status = res.status;
+    error.body = body;
+    throw error;
+  }
+
+  const payload = (await res.json().catch(() => [])) as unknown;
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  return payload
+    .map((item) => mapApiMiroItem(item as ApiMiroItem))
+    .filter((v): v is MiroItemRecord => Boolean(v));
+}
+
+export async function fetchMiroItems(
+  params: FetchMiroItemsParams
+): Promise<MiroItemRecord[]> {
+  return requestMiroItems(params);
+}
+
+export async function fetchMiroLatestDiff(
+  groupId: string,
+  options?: Omit<FetchMiroDiffsParams, "groupId">
+): Promise<MiroDiffRecord | null> {
+  const { limit, ...rest } = options ?? {};
+  const effectiveLimit =
+    typeof limit === "number" && Number.isFinite(limit) && limit > 0
+      ? Math.trunc(limit)
+      : 1;
+  const diffs = await requestMiroDiffs({
+    groupId,
+    limit: effectiveLimit,
+    ...rest,
+  });
+  return diffs[0] ?? null;
+}
+
+export async function fetchMiroLatestDiffForGroup(
+  group: GroupInfo,
+  options?: Omit<FetchMiroDiffsParams, "groupId">
+): Promise<MiroDiffRecord | null> {
+  const candidates = buildGroupIdCandidates(group);
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  let lastError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      const diff = await fetchMiroLatestDiff(candidate, options);
+      return diff;
+    } catch (error) {
+      const status = (error as { status?: number } | null)?.status;
+      if (status === 404 || status === 400) {
+        lastError = error;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (lastError) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Failed to fetch Miro diffs");
+  }
+  return null;
 }
 
 function fallbackRange(): SessionIsoRange {
