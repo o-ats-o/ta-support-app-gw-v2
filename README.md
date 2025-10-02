@@ -9,6 +9,31 @@
 - Recharts を利用したトレンドグラフや指標の可視化
 - Shadcn UI + Radix UI をベースとしたモダンな UI コンポーネント群
 
+## リポジトリ構造
+
+```text
+ta-support-app-gw-v2/
+├── public/                     # 画像やアイコンなどの静的アセット
+├── src/
+│   ├── app/                    # App Router のルーティングとページ
+│   │   ├── page.tsx            # ルートトップページ
+│   │   ├── list-ver/           # グループ一覧ビュー
+│   │   └── recommend-ver/      # 推薦ビュー
+│   ├── components/
+│   │   ├── dashboard/          # ダッシュボード専用 UI コンポーネント
+│   │   └── ui/                 # 共通 UI コンポーネント (shadcn/ui ベース)
+│   ├── features/
+│   │   └── dashboard/          # ダッシュボード機能に関するロジックと hooks
+│   └── lib/                    # API クライアント、型定義、ユーティリティ
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── next.config.ts
+└── README.md
+```
+
+上記以外にも ESLint/Tailwind の設定ファイルや `tsconfig.json`、`src/app/api/worker/[...path]/route.ts` などの API ルートが含まれています。
+
 ## 技術スタック
 
 - **フレームワーク**: Next.js 15 (App Router) + React 19 + TypeScript 5
