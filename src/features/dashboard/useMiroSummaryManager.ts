@@ -1,23 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMiroDiffsForGroup } from "@/lib/api";
 import type { GroupInfo, MiroDiffSummary } from "@/lib/types";
 import {
-  MiroComputedRange,
   buildMiroCacheKey,
   buildMiroSummary,
   computeMiroRange,
   formatMiroErrorMessage,
 } from "./miroSummary";
 
-type CacheEntry = {
-  summary: MiroDiffSummary | null;
-  error: string | null;
-  timestamp: number;
-};
-
-const summaryCache = new Map<string, CacheEntry>();
-
 const DEFAULT_CONCURRENCY = 2;
+const MIRO_SUMMARY_BASE_KEY = ["miroSummary"] as const;
 
 export type UseMiroSummaryManagerOptions = {
   active: boolean;
@@ -35,11 +28,6 @@ export type UseMiroSummaryManagerResult = {
   refresh: (options?: { force?: boolean }) => Promise<void>;
 };
 
-function getCachedEntry(key: string | null): CacheEntry | undefined {
-  if (!key) return undefined;
-  return summaryCache.get(key);
-}
-
 export function useMiroSummaryManager({
   active,
   groups,
@@ -48,16 +36,18 @@ export function useMiroSummaryManager({
   timeRange,
   concurrency = DEFAULT_CONCURRENCY,
 }: UseMiroSummaryManagerOptions): UseMiroSummaryManagerResult {
-  const [summary, setSummary] = useState<MiroDiffSummary | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const range = useMemo(() => computeMiroRange(date, timeRange), [date, timeRange]);
-  const activeKey = useMemo(() => {
+
+  const queryKey = useMemo(() => {
     if (!selectedGroup || !date || !timeRange) {
-      return null;
+      return [...MIRO_SUMMARY_BASE_KEY, "inactive"] as const;
     }
-    return buildMiroCacheKey(selectedGroup, date, timeRange);
+    return [
+      ...MIRO_SUMMARY_BASE_KEY,
+      buildMiroCacheKey(selectedGroup, date, timeRange),
+    ] as const;
   }, [selectedGroup, date, timeRange]);
 
   const effectiveConcurrency = useMemo(() => {
@@ -68,42 +58,28 @@ export function useMiroSummaryManager({
     return parsed;
   }, [concurrency]);
 
-  const activeControllerRef = useRef<AbortController | null>(null);
-  const backgroundControllersRef = useRef<Map<string, AbortController>>(new Map());
-  const backgroundTokenRef = useRef(0);
+  const enabled = Boolean(active && selectedGroup && range && date && timeRange);
 
-  const applyCacheToState = useCallback(
-    (entry?: CacheEntry) => {
-      if (!entry) return;
-      setSummary(entry.summary);
-      setError(entry.error);
-      setLoading(false);
-    },
-    []
-  );
-
-  const loadSummary = useCallback(
-    async ({ force = false }: { force?: boolean } = {}) => {
-      if (!active) {
-        return;
+  const {
+    data: fetchedSummary,
+    error: queryError,
+    isPending,
+    isFetching,
+    refetch,
+  } = useQuery<MiroDiffSummary>({
+    queryKey,
+    queryFn: async ({ signal }) => {
+      if (!selectedGroup || !range) {
+        throw new Error("有効な範囲が指定されていません。");
       }
-      if (!selectedGroup || !range || !activeKey) {
-        return;
-      }
-
-      const cached = getCachedEntry(activeKey);
-      if (cached && !force) {
-        applyCacheToState(cached);
-        return;
-      }
-
-      const controller = new AbortController();
-      activeControllerRef.current?.abort();
-      activeControllerRef.current = controller;
-
-      setLoading(true);
-      if (!cached || cached.error) {
-        setError(null);
+      const abortController = new AbortController();
+      const handleAbort = () => abortController.abort();
+      if (signal) {
+        if (signal.aborted) {
+          abortController.abort();
+        } else {
+          signal.addEventListener("abort", handleAbort);
+        }
       }
 
       try {
@@ -111,219 +87,158 @@ export function useMiroSummaryManager({
           since: range.previousStartIso,
           until: range.currentEndIso,
           limit: 500,
-          signal: controller.signal,
+          signal: abortController.signal,
         });
-        if (controller.signal.aborted) {
-          return;
-        }
-        const nextSummary = buildMiroSummary(diffs, range);
-        const entry: CacheEntry = {
-          summary: nextSummary,
-          error: null,
-          timestamp: Date.now(),
-        };
-        summaryCache.set(activeKey, entry);
-        applyCacheToState(entry);
-      } catch (err) {
-        if (controller.signal.aborted) {
-          return;
-        }
-        const message = formatMiroErrorMessage(err);
-        const entry: CacheEntry = {
-          summary: null,
-          error: message,
-          timestamp: Date.now(),
-        };
-        summaryCache.set(activeKey, entry);
-        applyCacheToState(entry);
+        return buildMiroSummary(diffs, range);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-          activeControllerRef.current = null;
+        if (signal) {
+          signal.removeEventListener("abort", handleAbort);
         }
       }
     },
-    [active, activeKey, applyCacheToState, range, selectedGroup]
-  );
+    enabled,
+    staleTime: 60 * 1000,
+    gcTime: 1000 * 60 * 10,
+    retry: 1,
+    placeholderData: (previous) => previous,
+  });
 
-  const prefetchOthers = useCallback(
-    async (
-      computedRange: MiroComputedRange,
-      currentDate: string,
-      currentTimeRange: string,
-      baseKey: string,
-      baseGroupId: GroupInfo["id"]
-    ) => {
-      backgroundTokenRef.current += 1;
-      const token = backgroundTokenRef.current;
-
-      backgroundControllersRef.current.forEach((controller) => controller.abort());
-      backgroundControllersRef.current.clear();
-
-      const tasks = groups
-        .filter((group) => group.id !== baseGroupId)
-        .map((group) => ({ group, key: buildMiroCacheKey(group, currentDate, currentTimeRange) }))
-        .filter(({ key }) => key !== baseKey)
-        .filter(({ key }) => !summaryCache.has(key));
-
-      if (tasks.length === 0) {
-        return;
-      }
-
-      const queue = [...tasks];
-      const workerCount = Math.max(1, Math.min(effectiveConcurrency, queue.length));
-
-      const workers = Array.from({ length: workerCount }, () =>
-        (async function worker() {
-          while (queue.length > 0 && backgroundTokenRef.current === token) {
-            const task = queue.shift();
-            if (!task) break;
-            const { group, key } = task;
-
-            if (summaryCache.has(key)) {
-              continue;
-            }
-
-            const controller = new AbortController();
-            backgroundControllersRef.current.set(key, controller);
-
-            try {
-              const diffs = await fetchMiroDiffsForGroup(group, {
-                since: computedRange.previousStartIso,
-                until: computedRange.currentEndIso,
-                limit: 500,
-                signal: controller.signal,
-              });
-              if (controller.signal.aborted || backgroundTokenRef.current !== token) {
-                continue;
-              }
-              const nextSummary = buildMiroSummary(diffs, computedRange);
-              summaryCache.set(key, {
-                summary: nextSummary,
-                error: null,
-                timestamp: Date.now(),
-              });
-            } catch (err) {
-              if (controller.signal.aborted || backgroundTokenRef.current !== token) {
-                continue;
-              }
-              const message = formatMiroErrorMessage(err);
-              summaryCache.set(key, {
-                summary: null,
-                error: message,
-                timestamp: Date.now(),
-              });
-            } finally {
-              backgroundControllersRef.current.delete(key);
-            }
-          }
-        })()
-      );
-
-      await Promise.allSettled(workers);
-
-      if (backgroundTokenRef.current === token) {
-        backgroundControllersRef.current.clear();
-      }
-    },
-    [effectiveConcurrency, groups]
-  );
-
-  useEffect(() => {
+  const baseError = useMemo(() => {
     if (!active) {
-      activeControllerRef.current?.abort();
-      backgroundControllersRef.current.forEach((controller) => controller.abort());
-      backgroundControllersRef.current.clear();
-      setLoading(false);
-      return;
-    }
-  }, [active]);
-
-  useEffect(() => {
-    if (!activeKey) {
-      if (active) {
-        setSummary(null);
-        setError(null);
-        setLoading(false);
-      }
-      return;
-    }
-    const cached = getCachedEntry(activeKey);
-    if (cached) {
-      applyCacheToState(cached);
-    } else if (active) {
-      setSummary(null);
-      setError(null);
-    }
-  }, [active, activeKey, applyCacheToState]);
-
-  useEffect(() => {
-    if (!active) {
-      return;
+      return null;
     }
     if (!selectedGroup) {
-      setSummary(null);
-      setError("グループが選択されていません。");
-      setLoading(false);
-      return;
-    }
-    if (!date || !timeRange || !range) {
-      setSummary(null);
-      setError("時間帯を選択すると差分を表示できます。");
-      setLoading(false);
-      return;
-    }
-
-    void loadSummary();
-
-    return () => {
-      activeControllerRef.current?.abort();
-    };
-  }, [active, selectedGroup, date, timeRange, range, loadSummary]);
-
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-    if (!range || !selectedGroup || !activeKey) {
-      return;
+      return "グループが選択されていません。";
     }
     if (!date || !timeRange) {
+      return "時間帯を選択すると差分を表示できます。";
+    }
+    if (!range) {
+      return "時間帯の形式が正しくありません。";
+    }
+    if (queryError) {
+      return formatMiroErrorMessage(queryError);
+    }
+    return null;
+  }, [active, selectedGroup, date, timeRange, range, queryError]);
+
+  const loading = active && enabled ? isPending || isFetching : false;
+  const summary = active && enabled ? fetchedSummary ?? null : null;
+  const error = baseError;
+
+  useEffect(() => {
+    if (!active || !range || !date || !timeRange || !selectedGroup) {
       return;
     }
     if (!Array.isArray(groups) || groups.length <= 1) {
       return;
     }
-    if (!summaryCache.has(activeKey)) {
+
+    const others = groups.filter((group) => group.id !== selectedGroup.id);
+    if (others.length === 0) {
       return;
     }
 
-    void prefetchOthers(range, date, timeRange, activeKey, selectedGroup.id);
+    let cancelled = false;
+    const abortController = new AbortController();
+
+    const worker = async (group: GroupInfo) => {
+      await queryClient.prefetchQuery({
+        queryKey: [
+          ...MIRO_SUMMARY_BASE_KEY,
+          buildMiroCacheKey(group, date, timeRange),
+        ],
+        queryFn: async ({ signal }) => {
+          const controller = new AbortController();
+          const handleAbort = () => controller.abort();
+          if (signal) {
+            if (signal.aborted) {
+              controller.abort();
+            } else {
+              signal.addEventListener("abort", handleAbort);
+            }
+          }
+          const outerAbort = () => controller.abort();
+          if (abortController.signal.aborted) {
+            controller.abort();
+          } else {
+            abortController.signal.addEventListener("abort", outerAbort);
+          }
+
+          try {
+            const diffs = await fetchMiroDiffsForGroup(group, {
+              since: range.previousStartIso,
+              until: range.currentEndIso,
+              limit: 500,
+              signal: controller.signal,
+            });
+            return buildMiroSummary(diffs, range);
+          } finally {
+            if (signal) {
+              signal.removeEventListener("abort", handleAbort);
+            }
+            abortController.signal.removeEventListener("abort", outerAbort);
+          }
+        },
+        staleTime: 1000 * 60 * 10,
+        gcTime: 1000 * 60 * 10,
+        retry: 1,
+      });
+    };
+
+    const runPrefetch = async () => {
+      const queue = [...others];
+      const workerCount = Math.max(
+        1,
+        Math.min(effectiveConcurrency, queue.length)
+      );
+
+      const workers = Array.from({ length: workerCount }, async () => {
+        while (!cancelled && queue.length > 0) {
+          const next = queue.shift();
+          if (!next) {
+            break;
+          }
+          try {
+            await worker(next);
+          } catch {
+            // ignore background errors
+          }
+        }
+      });
+
+      await Promise.all(workers);
+    };
+
+    void runPrefetch();
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
   }, [
     active,
     range,
-    selectedGroup,
-    activeKey,
     date,
     timeRange,
+    selectedGroup,
     groups,
-    prefetchOthers,
+    effectiveConcurrency,
+    queryClient,
   ]);
-
-  useEffect(() => {
-    const controllers = backgroundControllersRef.current;
-    return () => {
-      activeControllerRef.current?.abort();
-      controllers.forEach((controller) => controller.abort());
-      controllers.clear();
-    };
-  }, []);
 
   const refresh = useCallback(
     async ({ force = true }: { force?: boolean } = {}) => {
-      await loadSummary({ force });
+      if (!enabled) {
+        return;
+      }
+      if (force) {
+        await queryClient.invalidateQueries({ queryKey, exact: true });
+      } else {
+        await refetch({ cancelRefetch: false });
+      }
     },
-    [loadSummary]
+    [enabled, queryClient, queryKey, refetch]
   );
 
   return {
