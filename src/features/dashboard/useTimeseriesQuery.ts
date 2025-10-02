@@ -35,6 +35,13 @@ const buildGroupIdentifiers = (groups?: readonly GroupInfo[]): string[] => {
   return Array.from(unique).sort((a, b) => a.localeCompare(b));
 };
 
+export const buildTimeseriesIdentifiersKey = (
+  groups?: readonly GroupInfo[]
+): string => {
+  const identifiers = buildGroupIdentifiers(groups);
+  return identifiers.length > 0 ? identifiers.join("|") : "";
+};
+
 export const buildTimeseriesQueryKey = (
   date: string,
   range: string,
@@ -59,6 +66,6 @@ export function useTimeseriesQuery({ date, range, groups }: Params) {
       ),
     enabled,
     placeholderData: (previous) => previous,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 60 * 1000,
   });
 }
