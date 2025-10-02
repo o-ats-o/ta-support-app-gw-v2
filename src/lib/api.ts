@@ -6,6 +6,7 @@ import type {
   MiroDiffRecord,
   MiroItemRecord,
   RecommendationGroupItem,
+  TalkScenario,
   TimeSeriesPoint,
 } from "./types";
 import { GROUP_COLORS, createEmptyTimeseries } from "./types";
@@ -43,6 +44,7 @@ const TIMESERIES_PATH = "api/groups/timeseries";
 const UTTERANCES_PATH = "api/utterances";
 const MIRO_DIFFS_PATH = "api/miro/diffs";
 const MIRO_ITEMS_PATH = "api/miro/items";
+const SCENARIO_PATH = "api/generate-scenario";
 const TIME_RANGE_RE = /^(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})$/;
 
 export type SessionIsoRange = {
@@ -720,6 +722,163 @@ export async function fetchGroupConversationLogsByRange(
   }
 
   return [];
+}
+
+type ApiScenarioResponse = {
+  scenario?: unknown;
+  title?: unknown;
+  error?: unknown;
+  message?: unknown;
+};
+
+function splitScenarioText(value: string): string[] {
+  return value
+    .split(/\r?\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function normalizeScenarioBullet(input: unknown): string[] {
+  const results: string[] = [];
+
+  const appendFromUnknown = (value: unknown) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        appendFromUnknown(item);
+      }
+      return;
+    }
+    if (typeof value === "string") {
+      results.push(...splitScenarioText(value));
+      return;
+    }
+    if (typeof value === "object") {
+      const maybeText = (value as { text?: unknown }).text;
+      if (typeof maybeText === "string") {
+        results.push(...splitScenarioText(maybeText));
+      }
+      const maybeBullets = (value as { bullets?: unknown }).bullets;
+      if (maybeBullets) {
+        appendFromUnknown(maybeBullets);
+      }
+      const maybeScenario = (value as { scenario?: unknown }).scenario;
+      if (maybeScenario) {
+        appendFromUnknown(maybeScenario);
+      }
+      const maybeContent = (value as { content?: unknown }).content;
+      if (maybeContent) {
+        appendFromUnknown(maybeContent);
+      }
+    }
+  };
+
+  appendFromUnknown(input);
+  return results;
+}
+
+function sanitizeScenarioLine(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const withoutHeading = trimmed.replace(
+    /^(?:[-*・●○◆◇▶▷◉◯◎□■☆★✔️✅❌\d一二三四五六七八九十①②③④⑤⑥⑦⑧⑨⑩]+[\).．、:\s]*)/u,
+    ""
+  );
+  const normalized = withoutHeading.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+const DEFAULT_SCENARIO_TITLE = "声かけシナリオ";
+
+export async function generateTalkScenarioFromTranscript(
+  transcript: string,
+  options?: { signal?: AbortSignal }
+): Promise<TalkScenario> {
+  const trimmedTranscript = transcript.trim();
+  if (!trimmedTranscript) {
+    throw new Error("Transcript is required to generate scenario");
+  }
+
+  const res = await fetch(buildApiUrl(SCENARIO_PATH, new URLSearchParams()), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ transcript: trimmedTranscript }),
+    cache: "no-store",
+    signal: options?.signal,
+  });
+
+  if (!res.ok) {
+    let message = `Failed to generate scenario: ${res.status}`;
+    try {
+      const errorBody = (await res.json()) as ApiScenarioResponse;
+      if (typeof errorBody?.error === "string" && errorBody.error.trim()) {
+        message = errorBody.error.trim();
+      } else if (
+        typeof errorBody?.message === "string" &&
+        errorBody.message.trim()
+      ) {
+        message = errorBody.message.trim();
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text.trim()) {
+          message = text.trim();
+        }
+      } catch {
+        // ignore secondary parse errors
+      }
+    }
+
+    const error = new Error(message) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
+  }
+
+  let json: ApiScenarioResponse | null = null;
+  try {
+    json = (await res.json()) as ApiScenarioResponse;
+  } catch {
+    json = null;
+  }
+
+  if (json && typeof json.error === "string" && json.error.trim()) {
+    throw new Error(json.error.trim());
+  }
+
+  const rawScenario = (json?.scenario ?? json) as unknown;
+  const rawTitle =
+    typeof json?.title === "string" && json.title.trim()
+      ? json.title.trim()
+      : typeof (rawScenario as { title?: unknown })?.title === "string"
+      ? ((rawScenario as { title: string }).title || "").trim()
+      : undefined;
+
+  const candidates = normalizeScenarioBullet(rawScenario);
+
+  const bullets = candidates
+    .map(sanitizeScenarioLine)
+    .filter((line): line is string => Boolean(line));
+
+  if (bullets.length === 0 && typeof rawScenario === "string") {
+    const fallback = sanitizeScenarioLine(rawScenario);
+    if (fallback) {
+      bullets.push(fallback);
+    }
+  }
+
+  if (bullets.length === 0) {
+    throw new Error("Scenario response contained no content");
+  }
+
+  const title = rawTitle && rawTitle.length > 0 ? rawTitle : DEFAULT_SCENARIO_TITLE;
+
+  return {
+    title,
+    bullets: bullets.map((text) => ({ text })),
+  } satisfies TalkScenario;
 }
 
 type FetchMiroDiffsParams = {

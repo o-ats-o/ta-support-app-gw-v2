@@ -156,7 +156,13 @@ export function GroupDetail({
         </TabsContent>
         <TabsContent value="scenario" className="pt-4">
           {hasSelection && selected ? (
-            <ScenarioPanel data={data} selected={selected} />
+            <ScenarioPanel
+              data={data}
+              selected={selected}
+              logsLoading={Boolean(logsLoading)}
+              date={date}
+              timeRange={timeRange}
+            />
           ) : (
             renderPlaceholder(200)
           )}

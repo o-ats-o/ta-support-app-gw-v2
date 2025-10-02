@@ -87,7 +87,7 @@ export default function DashboardClient() {
   const logsLoading = logsPending || (logsFetching && logs.length === 0);
 
   const data = useMemo(
-    () => ({ ...base, groups, timeseries, logs }),
+    () => ({ ...base, scenario: undefined, groups, timeseries, logs }),
     [base, groups, timeseries, logs]
   );
 
