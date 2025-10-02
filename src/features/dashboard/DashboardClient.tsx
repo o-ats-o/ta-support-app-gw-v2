@@ -13,6 +13,7 @@ import {
   fetchGroupsByRange,
 } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
+import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
 const STORAGE_KEY = "dashboard:selectedGroup";
@@ -32,6 +33,7 @@ export default function DashboardClient() {
   );
   const [currentRange, setCurrentRange] = useState<string>(DEFAULT_TIME_RANGE);
   const [loading, setLoading] = useState(true);
+  const [isMiroTabActive, setIsMiroTabActive] = useState(false);
   const cacheRef = useRef<Map<string, GroupInfo[]>>(new Map());
   const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
     new Map()
@@ -141,6 +143,19 @@ export default function DashboardClient() {
   );
   const selected =
     data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
+
+  const {
+    summary: miroSummary,
+    loading: miroLoading,
+    error: miroError,
+  } = useMiroSummaryManager({
+    active: isMiroTabActive,
+    groups,
+    selectedGroup: selected,
+    date: selectedDate,
+    timeRange: currentRange,
+    concurrency: 2,
+  });
 
   const fetchLogsForSelection = useCallback(
     async ({
@@ -310,6 +325,10 @@ export default function DashboardClient() {
     [currentRange, fetchGroupsForRange]
   );
 
+  const handleDetailTabChange = useCallback((tab: string) => {
+    setIsMiroTabActive(tab === "miro");
+  }, []);
+
   useEffect(() => {
     if (!selectedDate || !currentRange) return;
     if (!groups || groups.length === 0) {
@@ -347,6 +366,12 @@ export default function DashboardClient() {
             loading={loading}
             timeseriesLoading={timeseriesLoading}
             logsLoading={logsLoading}
+            date={selectedDate}
+            timeRange={currentRange}
+            miroSummary={miroSummary}
+            miroLoading={miroLoading}
+            miroError={miroError}
+            onTabChange={handleDetailTabChange}
           />
         </div>
       </main>

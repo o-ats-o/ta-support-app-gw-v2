@@ -18,6 +18,7 @@ import {
   fetchGroupTimeseriesByRange,
 } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
+import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
 
 const DEFAULT_HIGHLIGHT_COUNT = 2;
 const STORAGE_KEY = "recommend:selectedGroup";
@@ -41,6 +42,7 @@ export default function RecommendClient() {
   const [timeRange, setTimeRange] = useState<string>(DEFAULT_TIME_LABEL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMiroTabActive, setIsMiroTabActive] = useState(false);
   const cacheRef = useRef<Map<string, RecommendationGroupItem[]>>(new Map());
   const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
     new Map()
@@ -56,6 +58,19 @@ export default function RecommendClient() {
 
   const selected =
     data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
+
+  const {
+    summary: miroSummary,
+    loading: miroLoading,
+    error: miroError,
+  } = useMiroSummaryManager({
+    active: isMiroTabActive,
+    groups,
+    selectedGroup: selected,
+    date: selectedDate,
+    timeRange,
+    concurrency: 2,
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -363,6 +378,10 @@ export default function RecommendClient() {
     setSelectedId(id);
   }, []);
 
+  const handleDetailTabChange = useCallback((tab: string) => {
+    setIsMiroTabActive(tab === "miro");
+  }, []);
+
   return (
     <div className="min-h-screen">
       <AppHeader date={selectedDate} onDateChange={handleDateChange} />
@@ -387,6 +406,12 @@ export default function RecommendClient() {
             loading={loading}
             timeseriesLoading={timeseriesLoading}
             logsLoading={logsLoading}
+            date={selectedDate}
+            timeRange={timeRange}
+            miroSummary={miroSummary}
+            miroLoading={miroLoading}
+            miroError={miroError}
+            onTabChange={handleDetailTabChange}
           />
         </div>
       </main>

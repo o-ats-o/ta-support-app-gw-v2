@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { DashboardData, GroupInfo } from "@/lib/types";
+import type { DashboardData, GroupInfo, MiroDiffSummary } from "@/lib/types";
 import TrendChartPanel from "./TrendChartPanel";
 import MiroWorkDetail from "./MiroWorkDetail";
 import ConversationLogs from "./ConversationLogs";
@@ -20,6 +20,12 @@ type Props = {
   loading?: boolean;
   timeseriesLoading?: boolean;
   logsLoading?: boolean;
+  date?: string;
+  timeRange?: string;
+  miroSummary?: MiroDiffSummary | null;
+  miroLoading?: boolean;
+  miroError?: string | null;
+  onTabChange?: (tab: TabValue) => void;
 };
 
 export function GroupDetail({
@@ -28,6 +34,12 @@ export function GroupDetail({
   loading = false,
   timeseriesLoading,
   logsLoading,
+  date,
+  timeRange,
+  miroSummary,
+  miroLoading,
+  miroError,
+  onTabChange,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabValue>("trend");
 
@@ -57,6 +69,11 @@ export function GroupDetail({
       setActiveTab(value as TabValue);
     }
   }, []);
+
+  useEffect(() => {
+    if (!onTabChange) return;
+    onTabChange(activeTab);
+  }, [activeTab, onTabChange]);
 
   const hasSelection = Boolean(selected);
   const statusMessage = loading
@@ -114,7 +131,14 @@ export function GroupDetail({
         </TabsContent>
         <TabsContent value="miro" className="pt-4">
           {hasSelection && selected ? (
-            <MiroWorkDetail data={data} selected={selected} />
+            <MiroWorkDetail
+              selected={selected}
+              date={date}
+              timeRange={timeRange}
+              summary={miroSummary}
+              loading={Boolean(miroLoading)}
+              error={miroError}
+            />
           ) : (
             renderPlaceholder(480)
           )}
