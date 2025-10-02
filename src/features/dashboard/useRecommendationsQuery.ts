@@ -26,6 +26,6 @@ export function useRecommendationsQuery({ date, range }: Params) {
       fetchGroupRecommendationsByRange({ date: date!, timeRange: range! }),
     enabled,
     placeholderData: (previous) => previous,
-    staleTime: 60 * 1000,
+    staleTime: 1000 * 60 * 10,
   });
 }
