@@ -14,6 +14,7 @@ type Props = {
   onTimeChange?: (timeRange: string) => void;
   timeRange?: string;
   loading?: boolean;
+  refreshing?: boolean;
 };
 
 function Metric({
@@ -126,15 +127,17 @@ export function GroupList({
   onTimeChange,
   timeRange,
   loading = false,
+  refreshing = false,
 }: Props) {
   const groups = data.groups;
   const skeletonCount = Math.max(groups.length || 0, 5);
   const isEmpty = groups.length === 0;
+  const showLoading = loading || refreshing;
 
   return (
     <Card className="h-full">
       <GroupListHeader timeLabel={timeRange} onTimeChange={onTimeChange} />
-      {loading ? (
+      {showLoading ? (
         <LoadingList count={skeletonCount} />
       ) : isEmpty ? (
         <EmptyMessage>該当するグループがありません。</EmptyMessage>

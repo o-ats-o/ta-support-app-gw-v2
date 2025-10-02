@@ -29,6 +29,7 @@ export default function DashboardClient() {
   const {
     data: groupsData,
     isPending: groupsPending,
+    isFetching: groupsFetching,
     error: groupsError,
     refetch: refetchGroups,
   } = useGroupsQuery({ date: selectedDate, range: currentRange });
@@ -40,6 +41,7 @@ export default function DashboardClient() {
 
   const groups = useMemo(() => groupsData ?? [], [groupsData]);
   const groupsLoading = groupsPending && groups.length === 0;
+  const groupsRefreshing = groupsFetching && !groupsLoading;
 
   const {
     data: timeseriesData,
@@ -171,6 +173,7 @@ export default function DashboardClient() {
             onTimeChange={handleTimeChange}
             timeRange={currentRange}
             loading={groupsLoading}
+            refreshing={groupsRefreshing}
           />
         </div>
         <div className="lg:sticky lg:top-14 self-start">
