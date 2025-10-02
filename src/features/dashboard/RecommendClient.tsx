@@ -41,7 +41,10 @@ export default function RecommendClient() {
 
   useEffect(() => {
     if (!recommendationsError) return;
-    console.error("[recommend-ver] recommendations query failed", recommendationsError);
+    console.error(
+      "[recommend-ver] recommendations query failed",
+      recommendationsError
+    );
   }, [recommendationsError]);
 
   const recommendations = useMemo(
@@ -225,12 +228,9 @@ export default function RecommendClient() {
     [timeRange]
   );
 
-  const handleDateChange = useCallback(
-    (date: string) => {
-      setSelectedDate(date);
-    },
-    []
-  );
+  const handleDateChange = useCallback((date: string) => {
+    setSelectedDate(date);
+  }, []);
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
