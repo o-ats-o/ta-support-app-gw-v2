@@ -1,26 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { GroupList } from "@/components/dashboard/GroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
 import { createEmptyTimeseries } from "@/lib/types";
 import type { ConversationLog, GroupInfo } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
-import {
-  fetchGroupConversationLogsByRange,
-  fetchGroupsByRange,
-} from "@/lib/api";
+import { fetchGroupConversationLogsByRange } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
 import { useTimeseriesQuery } from "@/features/dashboard/useTimeseriesQuery";
+import { useGroupsQuery } from "@/features/dashboard/useGroupsQuery";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
 const STORAGE_KEY = "dashboard:selectedGroup";
 
 export default function DashboardClient() {
   const base = useMemo(() => dashboardMock, []);
-  const [groups, setGroups] = useState<GroupInfo[]>([]);
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -28,11 +26,25 @@ export default function DashboardClient() {
     new Date().toISOString().slice(0, 10)
   );
   const [currentRange, setCurrentRange] = useState<string>(DEFAULT_TIME_RANGE);
-  const [loading, setLoading] = useState(true);
   const [isMiroTabActive, setIsMiroTabActive] = useState(false);
-  const cacheRef = useRef<Map<string, GroupInfo[]>>(new Map());
   const logsCacheRef = useRef<Map<string, ConversationLog[]>>(new Map());
   const activeLogsKeyRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const {
+    data: groupsData,
+    isPending: groupsPending,
+    error: groupsError,
+    refetch: refetchGroups,
+  } = useGroupsQuery({ date: selectedDate, range: currentRange });
+
+  useEffect(() => {
+    if (!groupsError) return;
+    console.error("[list-ver] groups query failed", groupsError);
+  }, [groupsError]);
+
+  const groups = useMemo(() => groupsData ?? [], [groupsData]);
+  const groupsLoading = groupsPending && groups.length === 0;
 
   const {
     data: timeseriesData,
@@ -53,11 +65,6 @@ export default function DashboardClient() {
   const timeseries = timeseriesData ?? createEmptyTimeseries();
   const timeseriesLoading = timeseriesPending || timeseriesFetching;
 
-  const getCacheKey = useCallback(
-    (date: string, range: string) => `${date}::${range}`,
-    []
-  );
-
   const getLogsCacheKey = useCallback(
     (date: string, range: string, group?: GroupInfo | null) => {
       const identifier =
@@ -66,19 +73,22 @@ export default function DashboardClient() {
     },
     []
   );
-  const applyGroups = useCallback((nextGroups: GroupInfo[]) => {
-    setGroups(nextGroups);
-    setSelectedId((prev) =>
-      nextGroups.some((g) => g.id === prev) ? prev : (nextGroups[0]?.id ?? "")
-    );
-  }, []);
-
   const data = useMemo(
     () => ({ ...base, groups, timeseries, logs }),
     [base, groups, timeseries, logs]
   );
   const selected =
     data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
+
+  useEffect(() => {
+    if (!groups.length) {
+      setSelectedId("");
+      return;
+    }
+    setSelectedId((prev) =>
+      prev && groups.some((g) => g.id === prev) ? prev : groups[0].id
+    );
+  }, [groups]);
 
   const {
     summary: miroSummary,
@@ -169,60 +179,6 @@ export default function DashboardClient() {
     window.localStorage.setItem(STORAGE_KEY, selectedId);
   }, [selectedId]);
 
-  const fetchGroupsForRange = useCallback(
-    async ({
-      date,
-      range,
-      force = false,
-    }: {
-      date: string;
-      range: string;
-      force?: boolean;
-    }) => {
-      if (!date || !range) return;
-      const key = getCacheKey(date, range);
-      if (!force) {
-        const cached = cacheRef.current.get(key);
-        if (cached) {
-          console.log("[list-ver] cache hit", {
-            date,
-            range,
-            key,
-            count: cached.length,
-          });
-          setLoading(false);
-          applyGroups(cached);
-          return;
-        }
-      }
-      setLoading(true);
-      console.log("[list-ver] fetching /api/sessions", {
-        date,
-        range,
-        key,
-        force,
-      });
-      try {
-        const nextGroups = await fetchGroupsByRange({
-          date,
-          timeRange: range,
-        });
-        console.log("[list-ver] fetch success", { count: nextGroups.length });
-        cacheRef.current.set(key, nextGroups);
-        applyGroups(nextGroups);
-      } catch (err) {
-        console.error("[list-ver] fetch failed", err);
-        const fallback = cacheRef.current.get(key);
-        if (fallback) {
-          applyGroups(fallback);
-        }
-      } finally {
-        setLoading(false);
-      }
-    },
-    [applyGroups, getCacheKey]
-  );
-
   const handleTimeChange = useCallback(
     (range: string) => {
       if (!range) return;
@@ -232,18 +188,13 @@ export default function DashboardClient() {
         date: selectedDate,
       });
       setCurrentRange(range);
-      void fetchGroupsForRange({ date: selectedDate, range });
     },
-    [currentRange, fetchGroupsForRange, selectedDate]
+    [currentRange, selectedDate]
   );
 
-  const handleDateChange = useCallback(
-    (date: string) => {
-      setSelectedDate(date);
-      void fetchGroupsForRange({ date, range: currentRange });
-    },
-    [currentRange, fetchGroupsForRange]
-  );
+  const handleDateChange = useCallback((date: string) => {
+    setSelectedDate(date);
+  }, []);
 
   const handleDetailTabChange = useCallback((tab: string) => {
     setIsMiroTabActive(tab === "miro");
@@ -264,9 +215,37 @@ export default function DashboardClient() {
     });
   }, [currentRange, fetchLogsForSelection, groups, selectedDate, selectedId]);
 
+  const handleRefresh = useCallback(() => {
+    void refetchGroups({ cancelRefetch: false });
+    void queryClient.invalidateQueries({ queryKey: ["timeseries"] });
+    const group = groups.find((g) => g.id === selectedId) ?? groups[0];
+    if (group) {
+      void fetchLogsForSelection({
+        date: selectedDate,
+        range: currentRange,
+        group,
+        force: true,
+      });
+    } else {
+      setLogs([]);
+    }
+  }, [
+    currentRange,
+    fetchLogsForSelection,
+    groups,
+    queryClient,
+    refetchGroups,
+    selectedDate,
+    selectedId,
+  ]);
+
   return (
     <div className="min-h-screen">
-      <AppHeader date={selectedDate} onDateChange={handleDateChange} />
+      <AppHeader
+        date={selectedDate}
+        onDateChange={handleDateChange}
+        onRefresh={handleRefresh}
+      />
 
       <main className="pt-14 px-4 pb-4 grid grid-cols-1 lg:grid-cols-[520px_minmax(0,1fr)] gap-2">
         <div>
@@ -276,14 +255,14 @@ export default function DashboardClient() {
             onSelect={setSelectedId}
             onTimeChange={handleTimeChange}
             timeRange={currentRange}
-            loading={loading}
+            loading={groupsLoading}
           />
         </div>
         <div className="lg:sticky lg:top-14 self-start">
           <GroupDetail
             data={data}
             selected={selected}
-            loading={loading}
+            loading={groupsLoading}
             timeseriesLoading={timeseriesLoading}
             logsLoading={logsLoading}
             date={selectedDate}
