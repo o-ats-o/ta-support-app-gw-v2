@@ -190,7 +190,7 @@ export function useScenarioQuery({
     queryKey,
     queryFn: () => generateTalkScenarioFromTranscript(transcript),
     enabled: enabled && Boolean(transcript),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 10,
     retry: 1,
     placeholderData: (previous) => previous,
