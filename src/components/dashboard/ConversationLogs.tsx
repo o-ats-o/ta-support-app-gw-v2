@@ -14,7 +14,9 @@ type Props = {
 function Section({ log }: { log: ConversationLog }) {
   return (
     <div className="space-y-3">
-      <div className="text-sm text-muted-foreground">{log.timeLabel}</div>
+      <div className="text-base text-emerald-700 font-semibold">
+        {log.timeLabel}
+      </div>
       <div className="space-y-5">
         {log.turns.map((t, idx) => (
           <div key={idx} className="space-y-2">
@@ -24,11 +26,6 @@ function Section({ log }: { log: ConversationLog }) {
             <div className="leading-7 text-[15px] text-foreground/90 break-words">
               {t.text}
             </div>
-            {t.timestamp && (
-              <div className="text-xs text-muted-foreground tabular-nums">
-                {t.timestamp}
-              </div>
-            )}
           </div>
         ))}
       </div>
