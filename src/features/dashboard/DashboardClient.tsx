@@ -5,15 +5,15 @@ import { GroupList } from "@/components/dashboard/GroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
 import { createEmptyTimeseries } from "@/lib/types";
-import type { ConversationLog, DashboardData, GroupInfo } from "@/lib/types";
+import type { ConversationLog, GroupInfo } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
 import {
   fetchGroupConversationLogsByRange,
-  fetchGroupTimeseriesByRange,
   fetchGroupsByRange,
 } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
+import { useTimeseriesQuery } from "@/features/dashboard/useTimeseriesQuery";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
 const STORAGE_KEY = "dashboard:selectedGroup";
@@ -21,10 +21,6 @@ const STORAGE_KEY = "dashboard:selectedGroup";
 export default function DashboardClient() {
   const base = useMemo(() => dashboardMock, []);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
-  const [timeseries, setTimeseries] = useState<DashboardData["timeseries"]>(
-    () => createEmptyTimeseries()
-  );
-  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -35,31 +31,30 @@ export default function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [isMiroTabActive, setIsMiroTabActive] = useState(false);
   const cacheRef = useRef<Map<string, GroupInfo[]>>(new Map());
-  const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
-    new Map()
-  );
-  const activeTimeseriesKeyRef = useRef<string | null>(null);
   const logsCacheRef = useRef<Map<string, ConversationLog[]>>(new Map());
   const activeLogsKeyRef = useRef<string | null>(null);
 
+  const {
+    data: timeseriesData,
+    isPending: timeseriesPending,
+    isFetching: timeseriesFetching,
+    error: timeseriesError,
+  } = useTimeseriesQuery({
+    date: selectedDate,
+    range: currentRange,
+    groups,
+  });
+
+  useEffect(() => {
+    if (!timeseriesError) return;
+    console.error("[list-ver] timeseries query failed", timeseriesError);
+  }, [timeseriesError]);
+
+  const timeseries = timeseriesData ?? createEmptyTimeseries();
+  const timeseriesLoading = timeseriesPending || timeseriesFetching;
+
   const getCacheKey = useCallback(
     (date: string, range: string) => `${date}::${range}`,
-    []
-  );
-
-  const getTimeseriesCacheKey = useCallback(
-    (date: string, range: string, groupList: readonly GroupInfo[]) => {
-      const baseKey = `${date}::${range}`;
-      if (!groupList || groupList.length === 0) {
-        return `${baseKey}::empty`;
-      }
-      const ids = groupList
-        .map((g) => g.rawId ?? g.name ?? `Group ${g.id}`)
-        .map((id) => id.trim())
-        .filter((id): id is string => Boolean(id) && id.length > 0)
-        .sort((a, b) => a.localeCompare(b));
-      return `${baseKey}::${ids.join("|")}`;
-    },
     []
   );
 
@@ -77,65 +72,6 @@ export default function DashboardClient() {
       nextGroups.some((g) => g.id === prev) ? prev : (nextGroups[0]?.id ?? "")
     );
   }, []);
-
-  const ensureTimeseriesForRange = useCallback(
-    async ({
-      date,
-      range,
-      groups: groupList,
-      force = false,
-    }: {
-      date: string;
-      range: string;
-      groups: readonly GroupInfo[];
-      force?: boolean;
-    }) => {
-      if (!groupList || groupList.length === 0) {
-        setTimeseries(createEmptyTimeseries());
-        setTimeseriesLoading(false);
-        return;
-      }
-
-      const key = getTimeseriesCacheKey(date, range, groupList);
-      if (!force) {
-        const cached = timeseriesCacheRef.current.get(key);
-        if (cached) {
-          setTimeseries(cached);
-          setTimeseriesLoading(false);
-          return;
-        }
-      }
-
-      activeTimeseriesKeyRef.current = key;
-      setTimeseriesLoading(true);
-      try {
-        const ts = await fetchGroupTimeseriesByRange(
-          { date, timeRange: range },
-          groupList
-        );
-        if (activeTimeseriesKeyRef.current !== key) return;
-        timeseriesCacheRef.current.set(key, ts);
-        setTimeseries(ts);
-      } catch (error) {
-        console.error("[list-ver] fetch timeseries failed", {
-          date,
-          range,
-          error,
-        });
-        if (!force) {
-          const fallback = timeseriesCacheRef.current.get(key);
-          if (fallback) {
-            setTimeseries(fallback);
-          }
-        }
-      } finally {
-        if (activeTimeseriesKeyRef.current === key) {
-          setTimeseriesLoading(false);
-        }
-      }
-    },
-    [getTimeseriesCacheKey]
-  );
 
   const data = useMemo(
     () => ({ ...base, groups, timeseries, logs }),
@@ -256,12 +192,6 @@ export default function DashboardClient() {
           });
           setLoading(false);
           applyGroups(cached);
-          void ensureTimeseriesForRange({
-            date,
-            range,
-            groups: cached,
-            force,
-          });
           return;
         }
       }
@@ -280,27 +210,17 @@ export default function DashboardClient() {
         console.log("[list-ver] fetch success", { count: nextGroups.length });
         cacheRef.current.set(key, nextGroups);
         applyGroups(nextGroups);
-        void ensureTimeseriesForRange({
-          date,
-          range,
-          groups: nextGroups,
-          force,
-        });
       } catch (err) {
         console.error("[list-ver] fetch failed", err);
         const fallback = cacheRef.current.get(key);
         if (fallback) {
-          void ensureTimeseriesForRange({
-            date,
-            range,
-            groups: fallback,
-          });
+          applyGroups(fallback);
         }
       } finally {
         setLoading(false);
       }
     },
-    [applyGroups, ensureTimeseriesForRange, getCacheKey]
+    [applyGroups, getCacheKey]
   );
 
   const handleTimeChange = useCallback(

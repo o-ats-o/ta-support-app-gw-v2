@@ -7,7 +7,6 @@ import { dashboardMock } from "@/lib/mock";
 import { createEmptyTimeseries } from "@/lib/types";
 import type {
   ConversationLog,
-  DashboardData,
   GroupInfo,
   RecommendationGroupItem,
 } from "@/lib/types";
@@ -15,10 +14,10 @@ import { AppHeader } from "@/components/ui/app-header";
 import {
   fetchGroupConversationLogsByRange,
   fetchGroupRecommendationsByRange,
-  fetchGroupTimeseriesByRange,
 } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
+import { useTimeseriesQuery } from "@/features/dashboard/useTimeseriesQuery";
 
 const DEFAULT_HIGHLIGHT_COUNT = 2;
 const STORAGE_KEY = "recommend:selectedGroup";
@@ -26,10 +25,6 @@ const STORAGE_KEY = "recommend:selectedGroup";
 export default function RecommendClient() {
   const base = useMemo(() => dashboardMock, []);
   const [groups, setGroups] = useState<GroupInfo[]>([]);
-  const [timeseries, setTimeseries] = useState<DashboardData["timeseries"]>(
-    () => createEmptyTimeseries()
-  );
-  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<
@@ -44,12 +39,27 @@ export default function RecommendClient() {
   const [error, setError] = useState<string | null>(null);
   const [isMiroTabActive, setIsMiroTabActive] = useState(false);
   const cacheRef = useRef<Map<string, RecommendationGroupItem[]>>(new Map());
-  const timeseriesCacheRef = useRef<Map<string, DashboardData["timeseries"]>>(
-    new Map()
-  );
-  const activeTimeseriesKeyRef = useRef<string | null>(null);
   const logsCacheRef = useRef<Map<string, ConversationLog[]>>(new Map());
   const activeLogsKeyRef = useRef<string | null>(null);
+
+  const {
+    data: timeseriesData,
+    isPending: timeseriesPending,
+    isFetching: timeseriesFetching,
+    error: timeseriesError,
+  } = useTimeseriesQuery({
+    date: selectedDate,
+    range: timeRange,
+    groups,
+  });
+
+  useEffect(() => {
+    if (!timeseriesError) return;
+    console.error("[recommend-ver] timeseries query failed", timeseriesError);
+  }, [timeseriesError]);
+
+  const timeseries = timeseriesData ?? createEmptyTimeseries();
+  const timeseriesLoading = timeseriesPending || timeseriesFetching;
 
   const data = useMemo(
     () => ({ ...base, groups, timeseries, logs }),
@@ -87,22 +97,6 @@ export default function RecommendClient() {
 
   const getCacheKey = useCallback(
     (date: string, range: string) => `${date}::${range}`,
-    []
-  );
-
-  const getTimeseriesCacheKey = useCallback(
-    (date: string, range: string, groupList: readonly GroupInfo[]) => {
-      const baseKey = `${date}::${range}`;
-      if (!groupList || groupList.length === 0) {
-        return `${baseKey}::empty`;
-      }
-      const ids = groupList
-        .map((g) => g.rawId ?? g.name ?? `Group ${g.id}`)
-        .map((id) => id.trim())
-        .filter((id): id is string => Boolean(id) && id.length > 0)
-        .sort((a, b) => a.localeCompare(b));
-      return `${baseKey}::${ids.join("|")}`;
-    },
     []
   );
 
@@ -198,65 +192,6 @@ export default function RecommendClient() {
     [getLogsCacheKey]
   );
 
-  const ensureTimeseriesForRange = useCallback(
-    async ({
-      date,
-      range,
-      groups: groupList,
-      force = false,
-    }: {
-      date: string;
-      range: string;
-      groups: readonly GroupInfo[];
-      force?: boolean;
-    }) => {
-      if (!groupList || groupList.length === 0) {
-        setTimeseries(createEmptyTimeseries());
-        setTimeseriesLoading(false);
-        return;
-      }
-
-      const key = getTimeseriesCacheKey(date, range, groupList);
-      if (!force) {
-        const cached = timeseriesCacheRef.current.get(key);
-        if (cached) {
-          setTimeseries(cached);
-          setTimeseriesLoading(false);
-          return;
-        }
-      }
-
-      activeTimeseriesKeyRef.current = key;
-      setTimeseriesLoading(true);
-      try {
-        const ts = await fetchGroupTimeseriesByRange(
-          { date, timeRange: range },
-          groupList
-        );
-        if (activeTimeseriesKeyRef.current !== key) return;
-        timeseriesCacheRef.current.set(key, ts);
-        setTimeseries(ts);
-      } catch (error) {
-        console.error("[recommend-ver] fetch timeseries failed", {
-          date,
-          range,
-          error,
-        });
-        if (!force) {
-          const fallback = timeseriesCacheRef.current.get(key);
-          if (fallback) {
-            setTimeseries(fallback);
-          }
-        }
-      } finally {
-        if (activeTimeseriesKeyRef.current === key) {
-          setTimeseriesLoading(false);
-        }
-      }
-    },
-    [getTimeseriesCacheKey]
-  );
-
   const fetchRecommendations = useCallback(
     async ({
       date,
@@ -279,13 +214,7 @@ export default function RecommendClient() {
           });
           setError(null);
           setLoading(false);
-          const nextGroups = applyRecommendations(cached);
-          void ensureTimeseriesForRange({
-            date,
-            range,
-            groups: nextGroups,
-            force,
-          });
+          applyRecommendations(cached);
           return;
         }
       }
@@ -303,24 +232,13 @@ export default function RecommendClient() {
           timeRange: range,
         });
         cacheRef.current.set(key, items);
-        const nextGroups = applyRecommendations(items);
-        void ensureTimeseriesForRange({
-          date,
-          range,
-          groups: nextGroups,
-          force,
-        });
+        applyRecommendations(items);
         console.log("[recommend-ver] fetch success", { count: items.length });
       } catch (err) {
         console.error("[recommend-ver] fetch failed", err);
         const fallback = cacheRef.current.get(key);
         if (fallback) {
-          const nextGroups = applyRecommendations(fallback);
-          void ensureTimeseriesForRange({
-            date,
-            range,
-            groups: nextGroups,
-          });
+          applyRecommendations(fallback);
         }
         const message =
           err instanceof Error ? err.message : "データの取得に失敗しました";
@@ -329,7 +247,7 @@ export default function RecommendClient() {
         setLoading(false);
       }
     },
-    [applyRecommendations, ensureTimeseriesForRange, getCacheKey]
+    [applyRecommendations, getCacheKey]
   );
 
   useEffect(() => {
