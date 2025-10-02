@@ -72,8 +72,11 @@ export function AppHeader({
         <button
           className="h-8 text-sm bg-white/15 rounded px-3 py-1 hover:bg-white/20 focus:ring-2 focus:ring-white/30"
           onClick={() => {
-            onRefresh?.({ force: true });
-            window.location.reload();
+            if (onRefresh) {
+              onRefresh({ force: true });
+            } else {
+              window.location.reload();
+            }
           }}
         >
           更新
