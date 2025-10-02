@@ -1,52 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## プロジェクト概要
 
-## Getting Started
+**TA Support App Gateway v2** は、授業設計や振り返りを支援するダッシュボードアプリケーションです。学習者の会話ログやシナリオ進行状況、Miro ワークのサマリー、トレンド指標などを集約し、グループ単位での状況把握の支援をします。
 
-First, run the development server:
+主要な機能:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- グループ/シナリオごとのログと進捗の可視化
+- 推薦グループの一覧表示と詳細
+- Recharts を利用したトレンドグラフや指標の可視化
+- Shadcn UI + Radix UI をベースとしたモダンな UI コンポーネント群
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 技術スタック
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **フレームワーク**: Next.js 15 (App Router) + React 19 + TypeScript 5
+- **UI/スタイリング**: Tailwind CSS 4、Radix UI、shadcn/ui コンポーネント、lucide-react アイコン
+- **データフェッチ**: Axios、@tanstack/react-query
+- **可視化**: Recharts
+- **ユーティリティ**: date-fns、zod、class-variance-authority など
+- **品質管理**: ESLint、Prettier
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ローカル環境構築
 
-## Environment Variables
+推奨動作環境: Node.js 20 LTS 以上、pnpm 9 系。
 
-Create a `.env.local` file (not committed to Git) by copying `.env.example` and fill in the required values:
+1. 依存パッケージをインストールします。
 
-```bash
-cp .env.example .env.local
-```
+   ```bash
+   pnpm install
+   ```
 
-Configure the REST API base URL:
+2. 環境変数を設定します。`.env.example` をコピーして `.env.local` を作成し、API エンドポイントなどの値を入力してください。
 
-```bash
-NEXT_PUBLIC_API_BASE_URL="https://your-api-host/"
-```
+   ```bash
+   cp .env.example .env.local
+   ```
 
-> ℹ️ 末尾のスラッシュは必須です。`.env.local` は VCS に追加しないでください。
+   `NEXT_PUBLIC_API_BASE_URL` などの URL は末尾に `/` を付けてください。
 
-## Learn More
+3. 開発サーバーを起動します。
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   pnpm dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ブラウザで [http://localhost:3000/list-ver](http://localhost:3000/list-ver) または， [http://localhost:3000/recommend-ver](http://localhost:3000/recommend-ver)を開くとアプリを確認できます。`src/app` 以下のファイルを更新するとホットリロードされます。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. その他の便利なスクリプト:
+   - `pnpm build`: Vercel 本番相当のビルドを実行します。
+   - `pnpm start`: ビルド済みアプリをローカルでサーブします。
+   - `pnpm lint:fix`: ESLint による静的解析と自動修正を実行します。
+   - `pnpm format`: Prettier によるコード整形を実行します。
 
-## Deploy on Vercel
+## Vercel でのデプロイ
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+このリポジトリは Vercel によって自動デプロイされます。基本的な運用フローは以下の通りです。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. GitHub の `main` ブランチに変更をマージすると、Vercel が自動的にビルドとデプロイを実行します。
+2. プレビュー環境が必要な場合は、Pull Request 作成時に Vercel が自動生成するプレビューデプロイ URL を利用できます。
+3. 環境変数 (`NEXT_PUBLIC_API_BASE_URL` など) は Vercel プロジェクトの **Settings > Environment Variables** から管理してください。ローカルと同じ値を `Preview` と `Production` に設定することで、環境間の挙動をそろえられます。
+4. ビルドコマンドには `pnpm install` と `pnpm build` が使用され、出力ディレクトリは Next.js App Router のデフォルト設定で Vercel によって処理されます。
+
+Vercel 上でのログやデプロイの詳細は、Vercel ダッシュボードから確認できます。
+
+## 参考リンク
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Vercel Documentation](https://vercel.com/docs)
+- [TanStack Query](https://tanstack.com/query/latest)

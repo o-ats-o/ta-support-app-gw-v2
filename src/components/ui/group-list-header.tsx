@@ -31,7 +31,7 @@ export default function GroupListHeader({
     const results: string[] = [];
     const pad2 = (n: number) => n.toString().padStart(2, "0");
     const startMinutes = 9 * 60; // 9:00
-    const endMinutes = 12 * 60; // 12:00
+    const endMinutes = 24 * 60; // 12:00
     for (let m = startMinutes; m < endMinutes; m += 5) {
       const startHour = Math.floor(m / 60);
       const startMin = m % 60;
