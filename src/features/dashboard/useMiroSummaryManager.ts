@@ -180,7 +180,7 @@ export function useMiroSummaryManager({
             abortController.signal.removeEventListener("abort", outerAbort);
           }
         },
-        staleTime: 1000 * 60 * 10,
+        staleTime: 60 * 1000,
         gcTime: 1000 * 60 * 10,
         retry: 1,
       });

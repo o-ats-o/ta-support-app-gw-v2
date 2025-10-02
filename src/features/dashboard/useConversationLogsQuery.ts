@@ -44,6 +44,6 @@ export function useConversationLogsQuery({
       ),
     enabled,
     placeholderData: (previous) => previous,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 60 * 1000,
   });
 }
