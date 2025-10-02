@@ -55,6 +55,8 @@ export default function RecommendClient() {
   }, [recommendationsError]);
   const recommendationsLoading =
     recommendationsPending && recommendations.length === 0;
+  const recommendationsRefreshing =
+    recommendationsFetching && !recommendationsLoading;
 
   const groups = useMemo(
     () => recommendations.map((item) => item.group),
@@ -198,6 +200,7 @@ export default function RecommendClient() {
             onTimeChange={handleTimeChange}
             timeRange={timeRange}
             loading={showListLoading}
+            refreshing={recommendationsRefreshing}
             error={recommendationErrorMessage}
             highlightCount={DEFAULT_HIGHLIGHT_COUNT}
           />

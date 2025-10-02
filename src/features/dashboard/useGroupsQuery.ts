@@ -25,5 +25,6 @@ export function useGroupsQuery({ date, range }: Params) {
     queryFn: () => fetchGroupsByRange({ date: date!, timeRange: range! }),
     enabled,
     placeholderData: (previous) => previous,
+    staleTime: 60 * 1000,
   });
 }

@@ -17,6 +17,7 @@ type Props = {
   loading?: boolean;
   error?: string | null;
   highlightCount?: number;
+  refreshing?: boolean;
 };
 
 function Metric({
@@ -139,10 +140,12 @@ export default function RecommendGroupList({
   loading = false,
   error = null,
   highlightCount = 2,
+  refreshing = false,
 }: Props) {
   const highlight = Math.max(0, highlightCount);
   const recommended = recommendations.slice(0, highlight);
   const others = recommendations.slice(highlight);
+  const showLoading = loading || refreshing;
 
   return (
     <Card className="h-full">
@@ -159,7 +162,7 @@ export default function RecommendGroupList({
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
           </div>
-        ) : loading ? (
+        ) : showLoading ? (
           <LoadingList count={highlight || 2} />
         ) : recommended.length === 0 ? (
           <EmptyMessage>該当するグループがありません。</EmptyMessage>
@@ -184,7 +187,7 @@ export default function RecommendGroupList({
         <div className="text-sm text-muted-foreground bg-muted px-3 py-2 mb-2">
           その他のグループ
         </div>
-        {loading ? (
+        {showLoading ? (
           <LoadingList count={Math.max(others.length, 3)} />
         ) : others.length === 0 ? (
           <EmptyMessage>その他のグループはありません。</EmptyMessage>
