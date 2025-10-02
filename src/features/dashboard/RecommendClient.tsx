@@ -9,9 +9,14 @@ import { createEmptyTimeseries } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
-import { useTimeseriesQuery } from "@/features/dashboard/useTimeseriesQuery";
+import {
+  buildTimeseriesIdentifiersKey,
+  buildTimeseriesQueryKey,
+  useTimeseriesQuery,
+} from "@/features/dashboard/useTimeseriesQuery";
 import { useRecommendationsQuery } from "@/features/dashboard/useRecommendationsQuery";
 import { useConversationLogsQuery } from "@/features/dashboard/useConversationLogsQuery";
+import { fetchGroupTimeseriesByRange } from "@/lib/api";
 
 const DEFAULT_HIGHLIGHT_COUNT = 2;
 const STORAGE_KEY = "recommend:selectedGroup";
@@ -151,14 +156,28 @@ export default function RecommendClient() {
 
   const handleTimeChange = useCallback(
     (range: string) => {
-      if (!range) return;
+      if (!range || range === timeRange) return;
       console.log("[recommend-ver] time changed", {
         from: timeRange,
         to: range,
       });
+
+      const identifiers = buildTimeseriesIdentifiersKey(groups);
+      if (identifiers && selectedDate) {
+        void queryClient.prefetchQuery({
+          queryKey: buildTimeseriesQueryKey(selectedDate, range, identifiers),
+          queryFn: () =>
+            fetchGroupTimeseriesByRange(
+              { date: selectedDate, timeRange: range },
+              groups ?? []
+            ),
+          staleTime: 60 * 1000,
+        });
+      }
+
       setTimeRange(range);
     },
-    [timeRange]
+    [groups, queryClient, selectedDate, timeRange]
   );
 
   const handleDateChange = useCallback((date: string) => {

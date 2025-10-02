@@ -9,9 +9,14 @@ import { createEmptyTimeseries } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
-import { useTimeseriesQuery } from "@/features/dashboard/useTimeseriesQuery";
+import {
+  buildTimeseriesIdentifiersKey,
+  buildTimeseriesQueryKey,
+  useTimeseriesQuery,
+} from "@/features/dashboard/useTimeseriesQuery";
 import { useGroupsQuery } from "@/features/dashboard/useGroupsQuery";
 import { useConversationLogsQuery } from "@/features/dashboard/useConversationLogsQuery";
+import { fetchGroupTimeseriesByRange } from "@/lib/api";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
 const STORAGE_KEY = "dashboard:selectedGroup";
@@ -131,15 +136,29 @@ export default function DashboardClient() {
 
   const handleTimeChange = useCallback(
     (range: string) => {
-      if (!range) return;
+      if (!range || range === currentRange) return;
       console.log("[list-ver] time changed", {
         from: currentRange,
         to: range,
         date: selectedDate,
       });
+
+      const identifiers = buildTimeseriesIdentifiersKey(groups);
+      if (identifiers && selectedDate) {
+        void queryClient.prefetchQuery({
+          queryKey: buildTimeseriesQueryKey(selectedDate, range, identifiers),
+          queryFn: () =>
+            fetchGroupTimeseriesByRange(
+              { date: selectedDate, timeRange: range },
+              groups ?? []
+            ),
+          staleTime: 60 * 1000,
+        });
+      }
+
       setCurrentRange(range);
     },
-    [currentRange, selectedDate]
+    [currentRange, groups, queryClient, selectedDate]
   );
 
   const handleDateChange = useCallback((date: string) => {
