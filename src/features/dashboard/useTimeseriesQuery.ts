@@ -59,5 +59,6 @@ export function useTimeseriesQuery({ date, range, groups }: Params) {
       ),
     enabled,
     placeholderData: (previous) => previous,
+    staleTime: 60 * 1000,
   });
 }
