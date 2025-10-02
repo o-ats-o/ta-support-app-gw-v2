@@ -1,34 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import RecommendGroupList from "@/components/dashboard/RecommendGroupList";
 import { GroupDetail } from "@/components/dashboard/GroupDetail";
 import { dashboardMock } from "@/lib/mock";
 import { createEmptyTimeseries } from "@/lib/types";
-import type { ConversationLog, GroupInfo } from "@/lib/types";
 import { AppHeader } from "@/components/ui/app-header";
-import { fetchGroupConversationLogsByRange } from "@/lib/api";
 import { DEFAULT_TIME_LABEL } from "@/components/ui/group-list-header";
 import { useMiroSummaryManager } from "@/features/dashboard/useMiroSummaryManager";
 import { useTimeseriesQuery } from "@/features/dashboard/useTimeseriesQuery";
 import { useRecommendationsQuery } from "@/features/dashboard/useRecommendationsQuery";
+import { useConversationLogsQuery } from "@/features/dashboard/useConversationLogsQuery";
 
 const DEFAULT_HIGHLIGHT_COUNT = 2;
 const STORAGE_KEY = "recommend:selectedGroup";
 
 export default function RecommendClient() {
   const base = useMemo(() => dashboardMock, []);
-  const [logs, setLogs] = useState<ConversationLog[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
   const [timeRange, setTimeRange] = useState<string>(DEFAULT_TIME_LABEL);
   const [isMiroTabActive, setIsMiroTabActive] = useState(false);
-  const logsCacheRef = useRef<Map<string, ConversationLog[]>>(new Map());
-  const activeLogsKeyRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
 
   const {
@@ -85,13 +80,36 @@ export default function RecommendClient() {
   const timeseries = timeseriesData ?? createEmptyTimeseries();
   const timeseriesLoading = timeseriesPending || timeseriesFetching;
 
+  const selected = useMemo(() => {
+    if (!groups.length) return undefined;
+    return groups.find((g) => g.id === selectedId) ?? groups[0];
+  }, [groups, selectedId]);
+
+  const {
+    data: logsData,
+    isPending: logsPending,
+    isFetching: logsFetching,
+    error: logsError,
+    refetch: refetchLogs,
+  } = useConversationLogsQuery({
+    date: selectedDate,
+    range: timeRange,
+    group: selected,
+    bucketCount: 5,
+  });
+
+  useEffect(() => {
+    if (!logsError) return;
+    console.error("[recommend-ver] logs query failed", logsError);
+  }, [logsError]);
+
+  const logs = useMemo(() => logsData ?? [], [logsData]);
+  const logsLoading = logsPending || (logsFetching && logs.length === 0);
+
   const data = useMemo(
     () => ({ ...base, groups, timeseries, logs }),
     [base, groups, timeseries, logs]
   );
-
-  const selected =
-    data.groups.find((g) => g.id === selectedId) ?? data.groups[0];
 
   const {
     summary: miroSummary,
@@ -129,93 +147,6 @@ export default function RecommendClient() {
     window.localStorage.setItem(STORAGE_KEY, selectedId);
   }, [selectedId]);
 
-  const getLogsCacheKey = useCallback(
-    (date: string, range: string, group?: GroupInfo | null) => {
-      const identifier =
-        group?.rawId?.trim() || group?.name?.trim() || group?.id;
-      return `${date}::${range}::${identifier ?? "unknown"}`;
-    },
-    []
-  );
-
-  const fetchLogsForSelection = useCallback(
-    async ({
-      date,
-      range,
-      group,
-      force = false,
-    }: {
-      date: string;
-      range: string;
-      group?: GroupInfo | null;
-      force?: boolean;
-    }) => {
-      if (!group) {
-        setLogs([]);
-        setLogsLoading(false);
-        return;
-      }
-
-      const key = getLogsCacheKey(date, range, group);
-      if (!force) {
-        const cached = logsCacheRef.current.get(key);
-        if (cached) {
-          setLogs(cached);
-          setLogsLoading(false);
-          return;
-        }
-      }
-
-      activeLogsKeyRef.current = key;
-      setLogsLoading(true);
-      try {
-        const result = await fetchGroupConversationLogsByRange(
-          { date, timeRange: range },
-          group,
-          { bucketCount: 5 }
-        );
-        if (activeLogsKeyRef.current !== key) return;
-        logsCacheRef.current.set(key, result);
-        setLogs(result);
-      } catch (error) {
-        console.error("[recommend-ver] fetch logs failed", {
-          date,
-          range,
-          group,
-          error,
-        });
-        if (!force) {
-          const fallback = logsCacheRef.current.get(key);
-          if (fallback) {
-            setLogs(fallback);
-          } else if (activeLogsKeyRef.current === key) {
-            setLogs([]);
-          }
-        }
-      } finally {
-        if (activeLogsKeyRef.current === key) {
-          setLogsLoading(false);
-        }
-      }
-    },
-    [getLogsCacheKey]
-  );
-
-  useEffect(() => {
-    if (!selectedDate || !timeRange) return;
-    if (!groups || groups.length === 0) {
-      setLogs([]);
-      setLogsLoading(false);
-      return;
-    }
-    const group = groups.find((g) => g.id === selectedId) ?? groups[0];
-    void fetchLogsForSelection({
-      date: selectedDate,
-      range: timeRange,
-      group,
-    });
-  }, [fetchLogsForSelection, groups, selectedDate, selectedId, timeRange]);
-
   const handleTimeChange = useCallback(
     (range: string) => {
       if (!range) return;
@@ -243,26 +174,8 @@ export default function RecommendClient() {
   const handleRefresh = useCallback(() => {
     void refetchRecommendations({ cancelRefetch: false });
     void queryClient.invalidateQueries({ queryKey: ["timeseries"] });
-    const group = groups.find((g) => g.id === selectedId) ?? groups[0];
-    if (group) {
-      void fetchLogsForSelection({
-        date: selectedDate,
-        range: timeRange,
-        group,
-        force: true,
-      });
-    } else {
-      setLogs([]);
-    }
-  }, [
-    fetchLogsForSelection,
-    groups,
-    queryClient,
-    refetchRecommendations,
-    selectedDate,
-    selectedId,
-    timeRange,
-  ]);
+    void refetchLogs({ cancelRefetch: false });
+  }, [queryClient, refetchLogs, refetchRecommendations]);
 
   const showListLoading =
     recommendationsLoading ||
