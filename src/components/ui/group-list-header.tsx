@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export const DEFAULT_TIME_LABEL = "10:40〜10:45";
+const STORAGE_KEY = "group-list-selected-time";
 
 type Props = {
   title?: string;
@@ -26,6 +27,7 @@ export default function GroupListHeader({
   onTimeChange,
 }: Props) {
   const [selectedTime, setSelectedTime] = useState(timeLabel);
+  const prevTimeLabelRef = useRef(timeLabel);
 
   const timeOptions = useMemo(() => {
     const results: string[] = [];
@@ -46,14 +48,32 @@ export default function GroupListHeader({
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored && timeOptions.includes(stored)) {
+      setSelectedTime(stored);
+    }
+  }, [timeOptions]);
+
+  useEffect(() => {
     if (!timeLabel) return;
-    setSelectedTime((prev) => (prev === timeLabel ? prev : timeLabel));
+    if (prevTimeLabelRef.current !== timeLabel) {
+      prevTimeLabelRef.current = timeLabel;
+      setSelectedTime(timeLabel);
+    }
   }, [timeLabel]);
 
   // 時間変更を親へ通知
   useEffect(() => {
     onTimeChange?.(selectedTime);
   }, [selectedTime, onTimeChange]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!selectedTime) return;
+    if (!timeOptions.includes(selectedTime)) return;
+    window.localStorage.setItem(STORAGE_KEY, selectedTime);
+  }, [selectedTime, timeOptions]);
 
   return (
     <div>
