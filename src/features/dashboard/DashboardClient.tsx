@@ -17,16 +17,16 @@ import {
 import { useGroupsQuery } from "@/features/dashboard/useGroupsQuery";
 import { useConversationLogsQuery } from "@/features/dashboard/useConversationLogsQuery";
 import { fetchGroupTimeseriesByRange } from "@/lib/api";
+import { usePersistentDate } from "@/features/dashboard/usePersistentDate";
 
 const DEFAULT_TIME_RANGE = DEFAULT_TIME_LABEL;
 const STORAGE_KEY = "dashboard:selectedGroup";
+const DATE_STORAGE_KEY = "dashboard:selectedDate";
 
 export default function DashboardClient() {
   const base = useMemo(() => dashboardMock, []);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [selectedDate, setSelectedDate] = usePersistentDate(DATE_STORAGE_KEY);
   const [currentRange, setCurrentRange] = useState<string>(DEFAULT_TIME_RANGE);
   const [isMiroTabActive, setIsMiroTabActive] = useState(false);
   const queryClient = useQueryClient();
@@ -161,9 +161,13 @@ export default function DashboardClient() {
     [currentRange, groups, queryClient, selectedDate]
   );
 
-  const handleDateChange = useCallback((date: string) => {
-    setSelectedDate(date);
-  }, []);
+  const handleDateChange = useCallback(
+    (date: string) => {
+      if (!date) return;
+      setSelectedDate(date);
+    },
+    [setSelectedDate]
+  );
 
   const handleDetailTabChange = useCallback((tab: string) => {
     setIsMiroTabActive(tab === "miro");

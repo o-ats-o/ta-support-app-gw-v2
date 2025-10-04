@@ -17,16 +17,16 @@ import {
 import { useRecommendationsQuery } from "@/features/dashboard/useRecommendationsQuery";
 import { useConversationLogsQuery } from "@/features/dashboard/useConversationLogsQuery";
 import { fetchGroupTimeseriesByRange } from "@/lib/api";
+import { usePersistentDate } from "@/features/dashboard/usePersistentDate";
 
 const DEFAULT_HIGHLIGHT_COUNT = 2;
 const STORAGE_KEY = "recommend:selectedGroup";
+const DATE_STORAGE_KEY = "dashboard:selectedDate";
 
 export default function RecommendClient() {
   const base = useMemo(() => dashboardMock, []);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [selectedDate, setSelectedDate] = usePersistentDate(DATE_STORAGE_KEY);
   const [timeRange, setTimeRange] = useState<string>(DEFAULT_TIME_LABEL);
   const [isMiroTabActive, setIsMiroTabActive] = useState(false);
   const queryClient = useQueryClient();
@@ -180,9 +180,13 @@ export default function RecommendClient() {
     [groups, queryClient, selectedDate, timeRange]
   );
 
-  const handleDateChange = useCallback((date: string) => {
-    setSelectedDate(date);
-  }, []);
+  const handleDateChange = useCallback(
+    (date: string) => {
+      if (!date) return;
+      setSelectedDate(date);
+    },
+    [setSelectedDate]
+  );
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
