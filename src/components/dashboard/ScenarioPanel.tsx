@@ -51,8 +51,56 @@ export default function ScenarioPanel({
   const buttonDisabled = !hasTranscript || Boolean(logsLoading) || isPending;
   const buttonLabel = isPending ? "生成中…" : "再生成";
 
+  let content: React.ReactNode;
+  if (logsLoading) {
+    content = (
+      <div className="text-sm text-muted-foreground">
+        会話履歴を読み込んでいます…
+      </div>
+    );
+  } else if (!hasTranscript) {
+    content = (
+      <div className="text-sm text-muted-foreground">
+        対象グループの会話履歴がまだありません
+      </div>
+    );
+  } else if (loading) {
+    content = (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-5/6" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    );
+  } else if (error) {
+    content = (
+      <div className="text-sm text-red-600">
+        シナリオの生成に失敗しました。
+        {error instanceof Error && error.message ? (
+          <span className="ml-1 text-red-500/80">{error.message}</span>
+        ) : (
+          <span className="ml-1">再度お試しください。</span>
+        )}
+      </div>
+    );
+  } else if (scenario) {
+    content = (
+      <ul className="space-y-4">
+        {scenario.bullets.map((b, i) => (
+          <li key={i} className="text-[15px] leading-7">
+            ・{b.text}
+          </li>
+        ))}
+      </ul>
+    );
+  } else {
+    content = (
+      <div className="text-sm text-muted-foreground">シナリオがありません</div>
+    );
+  }
+
   return (
-    <Card className="p-4">
+    <Card className="flex h-full min-h-0 flex-col p-4">
       <div className="flex items-center justify-between">
         <div className="font-semibold text-base">声かけシナリオ</div>
         <Button
@@ -65,43 +113,9 @@ export default function ScenarioPanel({
           {buttonLabel}
         </Button>
       </div>
-
-      {logsLoading ? (
-        <div className="mt-4 text-sm text-muted-foreground">
-          会話履歴を読み込んでいます…
-        </div>
-      ) : !hasTranscript ? (
-        <div className="mt-4 text-sm text-muted-foreground">
-          対象グループの会話履歴がまだありません
-        </div>
-      ) : loading ? (
-        <div className="mt-4 space-y-3">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-5/6" />
-          <Skeleton className="h-4 w-2/3" />
-        </div>
-      ) : error ? (
-        <div className="mt-4 text-sm text-red-600">
-          シナリオの生成に失敗しました。
-          {error instanceof Error && error.message ? (
-            <span className="ml-1 text-red-500/80">{error.message}</span>
-          ) : (
-            <span className="ml-1">再度お試しください。</span>
-          )}
-        </div>
-      ) : scenario ? (
-        <ul className="mt-4 space-y-4">
-          {scenario.bullets.map((b, i) => (
-            <li key={i} className="text-[15px] leading-7">
-              ・{b.text}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="mt-4 text-sm text-muted-foreground">
-          シナリオがありません
-        </div>
-      )}
+      <div className="mt-4 flex-1 min-h-[300px] overflow-y-auto">
+        {content}
+      </div>
     </Card>
   );
 }
