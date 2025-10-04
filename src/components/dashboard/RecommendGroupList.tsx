@@ -6,7 +6,7 @@ import GroupListHeader from "@/components/ui/group-list-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { GroupInfo, RecommendationGroupItem } from "@/lib/types";
-import { AlertCircle, AlertTriangle, Star } from "lucide-react";
+import { AlertCircle, AlertTriangle, Star, TrendingUp } from "lucide-react";
 
 type Props = {
   recommendations: RecommendationGroupItem[];
@@ -61,38 +61,57 @@ function GroupRow({
   onClick,
   reason,
   variant = "normal",
+  score,
 }: {
   group: GroupInfo;
   active: boolean;
   onClick: () => void;
   reason?: string;
   variant?: "normal" | "recommended";
+  score?: number;
 }) {
+  const hasScore = typeof score === "number" && Number.isFinite(score);
   return (
     <button
       type="button"
       className={cn(
-        "w-full px-3 py-2 text-left rounded-md transition-colors border border-transparent",
-        active ? "ring-2 ring-indigo-300" : "hover:bg-muted/50"
+        "w-full px-3 py-3 text-left rounded-lg transition-all border border-transparent",
+        "hover:bg-muted/50",
+        active && "ring-2 ring-indigo-300"
       )}
       onClick={onClick}
     >
-      <div className="flex items-center gap-2">
-        {variant === "recommended" && (
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-        )}
-        <span
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: group.color }}
-        />
-        <span className="font-medium">{group.name}</span>
-      </div>
-      {reason && (
-        <div className="text-[13px] text-muted-foreground mt-1">
-          推薦理由: {reason}
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {variant === "recommended" && (
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            )}
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: group.color }}
+            />
+            <span className="font-medium text-sm sm:text-base">{group.name}</span>
+          </div>
+          {reason && (
+            <div className="text-[13px] text-muted-foreground">
+              推薦理由: {reason}
+            </div>
+          )}
         </div>
-      )}
-      <div className="mt-2 grid grid-cols-3 gap-8 justify-items-center text-center w-fit mx-auto">
+        {hasScore && (
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Score
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 px-2 py-0.5 text-[12px] font-semibold text-primary tabular-nums">
+              <TrendingUp className="h-3 w-3" />
+              {score!.toFixed(2)}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-6 sm:gap-8 justify-items-center text-center text-[13px] sm:text-sm">
         <Metric
           label="発話"
           value={`${group.metrics.speechCount}回`}
@@ -175,6 +194,7 @@ export default function RecommendGroupList({
                   active={selectedId === item.group.id}
                   onClick={() => onSelect(item.group.id)}
                   variant="recommended"
+                  score={item.score}
                   reason={item.reasons.join("、") || undefined}
                 />
               </li>
@@ -199,6 +219,7 @@ export default function RecommendGroupList({
                   group={item.group}
                   active={selectedId === item.group.id}
                   onClick={() => onSelect(item.group.id)}
+                  score={item.score}
                   reason={item.reasons.join("、") || undefined}
                 />
               </li>
