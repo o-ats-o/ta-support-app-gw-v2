@@ -32,7 +32,7 @@ export default function TrendChartPanel({
   const [onlySelected, setOnlySelected] = useState(false);
 
   return (
-    <Card className="p-4 h-[500px]">
+    <Card className="flex h-full min-h-0 flex-col p-4">
       <div className="font-semibold text-md">時間推移グラフ</div>
       <div className="-mt-3">
         <ChartSeriesSelector value={series} onChange={setSeries} />
@@ -53,7 +53,7 @@ export default function TrendChartPanel({
       </div>
 
       <div
-        className="relative -mt-4 h-[360px]"
+        className="relative -mt-2 flex-1 min-h-[320px]"
         aria-busy={timeseriesLoading}
         aria-live="polite"
       >
