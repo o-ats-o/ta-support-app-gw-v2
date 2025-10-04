@@ -80,17 +80,14 @@ export function GroupDetail({
     ? "データを読み込んでいます…"
     : "グループを選択してください";
 
-  const renderPlaceholder = (height: number) => (
-    <div className="relative rounded-md" style={{ height: `${height}px` }}>
-      <Skeleton className="h-full w-full" />
-      <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-        {statusMessage}
-      </div>
+  const renderPlaceholder = () => (
+    <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-muted-foreground/40 bg-muted/20 text-sm text-muted-foreground">
+      {statusMessage}
     </div>
   );
 
   return (
-    <Card className="p-3 h-full">
+    <Card className="flex min-h-[calc(100vh-5rem)] flex-col p-3">
       <div className="flex items-center gap-2">
         {hasSelection ? (
           <span className="font-semibold text-lg underline underline-offset-4 decoration-2">
@@ -101,7 +98,11 @@ export function GroupDetail({
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="-mt-1">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="-mt-1 flex flex-1 flex-col min-h-0"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="trend" disabled={!hasSelection}>
             時間推移グラフ
@@ -116,7 +117,10 @@ export function GroupDetail({
             Miro作業量詳細
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="trend" className="pt-4">
+        <TabsContent
+          value="trend"
+          className="flex flex-1 flex-col pt-4 min-h-0"
+        >
           {hasSelection && selected ? (
             <TrendChartPanel
               data={data}
@@ -126,10 +130,13 @@ export function GroupDetail({
               defaultSeries="speech"
             />
           ) : (
-            renderPlaceholder(360)
+            renderPlaceholder()
           )}
         </TabsContent>
-        <TabsContent value="miro" className="pt-4">
+        <TabsContent
+          value="miro"
+          className="flex flex-1 flex-col pt-4 min-h-0"
+        >
           {hasSelection && selected ? (
             <MiroWorkDetail
               selected={selected}
@@ -140,10 +147,13 @@ export function GroupDetail({
               error={miroError}
             />
           ) : (
-            renderPlaceholder(480)
+            renderPlaceholder()
           )}
         </TabsContent>
-        <TabsContent value="logs" className="pt-4">
+        <TabsContent
+          value="logs"
+          className="flex flex-1 flex-col pt-4 min-h-0"
+        >
           {hasSelection && selected ? (
             <ConversationLogs
               data={data}
@@ -151,10 +161,13 @@ export function GroupDetail({
               loading={Boolean(loading) || Boolean(logsLoading)}
             />
           ) : (
-            renderPlaceholder(380)
+            renderPlaceholder()
           )}
         </TabsContent>
-        <TabsContent value="scenario" className="pt-4">
+        <TabsContent
+          value="scenario"
+          className="flex flex-1 flex-col pt-4 min-h-0"
+        >
           {hasSelection && selected ? (
             <ScenarioPanel
               data={data}
@@ -164,7 +177,7 @@ export function GroupDetail({
               timeRange={timeRange}
             />
           ) : (
-            renderPlaceholder(200)
+            renderPlaceholder()
           )}
         </TabsContent>
       </Tabs>
