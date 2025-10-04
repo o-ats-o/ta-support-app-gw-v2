@@ -102,7 +102,7 @@ export default function ScenarioPanel({
   return (
     <Card className="flex h-full min-h-0 flex-col p-4">
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-base">声かけシナリオ</div>
+        <div className="font-semibold text-md mb-2">声かけシナリオ</div>
         <Button
           type="button"
           variant="outline"
