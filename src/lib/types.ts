@@ -117,6 +117,21 @@ export type MiroItemRecord = {
   deletedAt?: string | null;
 };
 
+export type MiroDiffSummaryDetail = {
+  id: string;
+  type?: string;
+  title: string;
+  subtitle?: string;
+  diffAt?: string;
+  link?: string;
+};
+
+export type MiroDiffSummaryDetails = {
+  added: MiroDiffSummaryDetail[];
+  updated: MiroDiffSummaryDetail[];
+  deleted: MiroDiffSummaryDetail[];
+};
+
 export type MiroDiffSummary = {
   added: number;
   updated: number;
@@ -125,4 +140,5 @@ export type MiroDiffSummary = {
   diffCount: number;
   boardId?: string;
   lastDiffAt?: string;
+  details: MiroDiffSummaryDetails;
 };
