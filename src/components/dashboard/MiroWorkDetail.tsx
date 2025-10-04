@@ -276,6 +276,7 @@ export default function MiroWorkDetail({
                   selectedItems.length > 0 ? (
                     selectedItems.map((item, index) => {
                       const diffLabel = formatDiffTimestampLabel(item.diffAt);
+                      const badgeLabel = item.typeLabel ?? item.type;
                       return (
                         <div
                           key={`${item.id}-${item.diffAt ?? "unknown"}-${index}`}
@@ -284,8 +285,13 @@ export default function MiroWorkDetail({
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                {item.type ? (
-                                  <Badge variant="outline">{item.type}</Badge>
+                                {badgeLabel ? (
+                                  <Badge
+                                    variant="outline"
+                                    title={item.type && badgeLabel !== item.type ? item.type : undefined}
+                                  >
+                                    {badgeLabel}
+                                  </Badge>
                                 ) : null}
                                 <span className="font-medium leading-snug">
                                   {item.title}

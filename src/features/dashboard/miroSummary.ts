@@ -27,6 +27,44 @@ export const INITIAL_MIRO_SUMMARY: MiroDiffSummary = {
   },
 };
 
+// https://developers.miro.com/reference/get-items に記載のアイテムタイプを中心に、日本語ラベルへ変換する。
+const MIRO_ITEM_TYPE_LABELS: Record<string, string> = {
+  app_card: "アプリカード",
+  card: "カード",
+  data_table_format: "データテーブル",
+  document: "ドキュメント",
+  doc_format: "Miroドキュメント",
+  embed: "埋め込み",
+  frame: "フレーム",
+  image: "画像",
+  shape: "図形",
+  sticky_note: "付箋",
+  text: "テキスト",
+  table: "表",
+  table_text: "表テキスト",
+  table_row: "表の行",
+  table_column: "表の列",
+  table_header: "表ヘッダー",
+  connector: "コネクタ",
+  connection: "接続線",
+  line: "線",
+  arrow: "矢印",
+  comment: "コメント",
+  icon: "アイコン",
+  sticker: "ステッカー",
+  mind_map: "マインドマップ",
+  mind_map_node: "マインドマップノード",
+  mindmap_node: "マインドマップノード",
+  web: "ウェブ埋め込み",
+};
+
+function translateMiroItemTypeLabel(type?: string): string | undefined {
+  if (!type) return undefined;
+  const normalized = type.trim().toLowerCase();
+  if (!normalized) return undefined;
+  return MIRO_ITEM_TYPE_LABELS[normalized];
+}
+
 const TIME_RANGE_RE = /^(\d{1,2}):(\d{2})〜(\d{1,2}):(\d{2})$/;
 
 type InternalDetail = MiroDiffSummaryDetail & { timestampMs: number };
@@ -135,11 +173,17 @@ function buildDetailFromItem(
     typeof rawType === "string" && rawType.trim().length > 0
       ? rawType.trim()
       : undefined;
+  const typeLabel = translateMiroItemTypeLabel(type);
 
   const text = extractItemText(item);
-  const title = truncateLabel(text ?? (type ? `${type} (${id})` : `ID: ${id}`));
+  const fallbackTitleLabel = typeLabel ?? type;
+  const title = truncateLabel(
+    text ?? (fallbackTitleLabel ? `${fallbackTitleLabel} (${id})` : `ID: ${id}`)
+  );
   const subtitleParts: string[] = [];
-  if (type) {
+  if (typeLabel) {
+    subtitleParts.push(`タイプ: ${typeLabel}${type && typeLabel !== type ? ` (${type})` : ""}`);
+  } else if (type) {
     subtitleParts.push(`タイプ: ${type}`);
   }
   subtitleParts.push(`ID: ${id}`);
@@ -149,6 +193,7 @@ function buildDetailFromItem(
   return {
     id,
     type,
+    typeLabel,
     title,
     subtitle,
     diffAt,

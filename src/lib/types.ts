@@ -120,6 +120,7 @@ export type MiroItemRecord = {
 export type MiroDiffSummaryDetail = {
   id: string;
   type?: string;
+  typeLabel?: string;
   title: string;
   subtitle?: string;
   diffAt?: string;
