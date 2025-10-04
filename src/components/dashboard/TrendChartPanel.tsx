@@ -53,7 +53,7 @@ export default function TrendChartPanel({
       </div>
 
       <div
-        className="relative -mt-2 flex-1 min-h-[320px]"
+        className="relative -mt-5 h-[360px]"
         aria-busy={timeseriesLoading}
         aria-live="polite"
       >
