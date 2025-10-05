@@ -220,7 +220,6 @@ export default function RecommendGroupList({
                   active={selectedId === item.group.id}
                   onClick={() => onSelect(item.group.id)}
                   score={item.score}
-                  reason={item.reasons.join("、") || undefined}
                 />
               </li>
             ))}
