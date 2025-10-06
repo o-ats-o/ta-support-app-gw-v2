@@ -55,13 +55,13 @@ export default function ConversationLogs({ data, loading = false }: Props) {
   const showEmpty = !loading && logs.length === 0;
 
   return (
-    <Card className="flex h-full min-h-0 flex-col p-4">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <div className="font-semibold text-base">会話履歴</div>
-  <ScrollArea className="mt-2 flex-1 min-h-[320px] pr-2">
+      <ScrollArea className="mt-2 flex-1 min-h-[320px] pr-2">
         {loading ? (
           <LogsSkeleton />
         ) : (
-          <div className="space-y-10">
+          <div className="space-y-10 pb-2">
             {logs.map((log, i) => (
               <Section key={i} log={log} />
             ))}

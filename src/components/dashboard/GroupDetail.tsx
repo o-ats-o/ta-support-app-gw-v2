@@ -87,7 +87,7 @@ export function GroupDetail({
   );
 
   return (
-    <Card className="flex min-h-[calc(100vh-5rem)] flex-col p-3">
+    <Card className="flex min-h-[calc(100vh-5rem)] lg:h-[calc(100vh-5rem)] flex-col overflow-hidden p-3">
       <div className="flex items-center gap-2">
         {hasSelection ? (
           <span className="font-semibold text-lg underline underline-offset-4 decoration-2">
