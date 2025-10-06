@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { DashboardData, GroupInfo, MiroDiffSummary } from "@/lib/types";
 import TrendChartPanel from "./TrendChartPanel";
 import MiroWorkDetail from "./MiroWorkDetail";
@@ -88,8 +89,20 @@ export function GroupDetail({
     </div>
   );
 
+  const cardHeightClasses = useMemo(() => {
+    if (activeTab === "miro") {
+      return "min-h-[calc(100vh-1rem)] lg:min-h-[calc(100vh-1rem)]";
+    }
+    return "min-h-[calc(100vh-5rem)] lg:min-h-[calc(100vh-5rem)]";
+  }, [activeTab]);
+
   return (
-    <Card className="flex min-h-[calc(100vh-5rem)] lg:h-[calc(100vh-5rem)] flex-col overflow-hidden p-3">
+    <Card
+      className={cn(
+        "flex flex-col overflow-hidden p-3 transition-[min-height] duration-300",
+        cardHeightClasses
+      )}
+    >
       <div className="flex items-center gap-2">
         {hasSelection ? (
           <span className="font-semibold text-lg underline underline-offset-4 decoration-2">

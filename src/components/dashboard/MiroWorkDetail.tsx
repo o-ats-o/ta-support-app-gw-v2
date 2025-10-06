@@ -69,8 +69,7 @@ export default function MiroWorkDetail({
 
   const baseSummary = summary ?? INITIAL_MIRO_SUMMARY;
   const detailMap = baseSummary.details ?? INITIAL_MIRO_SUMMARY.details;
-  const { added: addedDetails, updated: updatedDetails, deleted: deletedDetails } =
-    detailMap;
+  const { added: addedDetails, updated: updatedDetails, deleted: deletedDetails } = detailMap;
 
   const [activeCategory, setActiveCategory] = useState<DiffCategory | null>(null);
 
@@ -84,12 +83,7 @@ export default function MiroWorkDetail({
     if (lengthLookup[activeCategory] === 0) {
       setActiveCategory(null);
     }
-  }, [
-    activeCategory,
-    addedDetails.length,
-    updatedDetails.length,
-    deletedDetails.length,
-  ]);
+  }, [activeCategory, addedDetails.length, updatedDetails.length, deletedDetails.length]);
 
   const summaryItems = useMemo(
     () => [
@@ -138,9 +132,7 @@ export default function MiroWorkDetail({
       ? deletedDetails
       : [];
 
-  const selectedSummaryItem = summaryItems.find(
-    (item) => item.key === activeCategory
-  );
+  const selectedSummaryItem = summaryItems.find((item) => item.key === activeCategory);
   const selectedCount = selectedItems.length;
   const blockDetails = Boolean(effectiveError) && summary == null;
   const showErrorBanner = Boolean(effectiveError) && summary != null;
@@ -156,21 +148,15 @@ export default function MiroWorkDetail({
   };
 
   return (
-    <Card className="flex h-full min-h-0 flex-col p-4">
+    <Card className="flex h-full min-h-[720px] max-h-[calc(100vh-8rem)] flex-col overflow-hidden p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-base">Miro作業量詳細</div>
-          <div className="text-xs text-muted-foreground">
-            対象: {selected.name}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            総数: {baseSummary.total}件
-          </div>
+          <div className="text-xs text-muted-foreground">対象: {selected.name}</div>
+          <div className="text-sm text-muted-foreground">総数: {baseSummary.total}件</div>
         </div>
         {isRefreshing ? (
-          <div className="flex items-center text-xs text-emerald-500">
-            更新中…
-          </div>
+          <div className="flex items-center text-xs text-emerald-500">更新中…</div>
         ) : null}
       </div>
 
@@ -198,209 +184,181 @@ export default function MiroWorkDetail({
               aria-disabled={isDisabled}
               onClick={() => {
                 if (isDisabled) return;
-                setActiveCategory((prev) =>
-                  prev === item.key ? null : item.key
-                );
+                setActiveCategory((prev) => (prev === item.key ? null : item.key));
               }}
               onKeyDown={(event) => {
                 if (isDisabled) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  setActiveCategory((prev) =>
-                    prev === item.key ? null : item.key
-                  );
+                  setActiveCategory((prev) => (prev === item.key ? null : item.key));
                 }
               }}
               className={cn(
                 "flex h-[180px] flex-col justify-center gap-3 bg-muted/40 p-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                isDisabled
-                  ? "cursor-not-allowed opacity-60"
-                  : "cursor-pointer hover:bg-muted",
-                isActive
-                  ? "border-emerald-500 ring-2 ring-emerald-500"
-                  : "border-transparent"
+                isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted",
+                isActive ? "border-emerald-500 ring-2 ring-emerald-500" : "border-transparent"
               )}
             >
               <div className="flex items-center gap-2 text-muted-foreground">
                 <span className="text-xl" aria-hidden>
                   {item.icon}
                 </span>
-                <span className="font-medium text-black dark:text-white">
-                  {item.label}
-                </span>
+                <span className="font-medium text-black dark:text-white">{item.label}</span>
               </div>
               <div className={cn("mt-4 text-3xl font-bold", item.color)}>
                 {showSkeleton ? <Skeleton className="h-9 w-16" /> : item.count}
               </div>
               <div className="text-sm text-muted-foreground">
-                {showSkeleton ? (
-                  <Skeleton className="mt-2 h-4 w-16" />
-                ) : (
-                  <span>{percent}</span>
-                )}
+                {showSkeleton ? <Skeleton className="mt-2 h-4 w-16" /> : <span>{percent}</span>}
               </div>
             </Card>
           );
         })}
       </div>
 
-      <div className="flex-1 min-h-[260px] max-h-[420px] flex flex-col overflow-hidden rounded-xl border border-muted-foreground/40 bg-muted/20">
+  <div className="flex-1 min-h-[260px] md:min-h-[320px] flex flex-col overflow-hidden rounded-xl border border-muted-foreground/40 bg-muted/20">
         <div className="flex items-center justify-between border-b border-muted-foreground/40 px-4 py-3">
           <div className="font-semibold text-sm">
-            {activeCategory && selectedSummaryItem
-              ? `${selectedSummaryItem.label}の詳細`
-              : "差分の詳細"}
+            {activeCategory && selectedSummaryItem ? `${selectedSummaryItem.label}の詳細` : "差分の詳細"}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {showErrorBanner ? (
-              <span className="text-amber-600">注意</span>
-            ) : null}
+            {showErrorBanner ? <span className="text-amber-600">注意</span> : null}
             {activeCategory && selectedSummaryItem ? (
               <span>
                 {selectedSummaryItem.label}
                 {selectedCount ? ` (${selectedCount}件)` : ""}
               </span>
             ) : (
-              <span className="text-muted-foreground/70">
-                カード選択で詳細を表示
-              </span>
+              <span className="text-muted-foreground/70">カード選択で詳細を表示</span>
             )}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            {showSkeleton ? (
-              <div className="space-y-2">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ) : blockDetails ? (
-              <div className="rounded-md border border-muted-foreground/40 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
-                {effectiveError}
-              </div>
-            ) : (
-              <>
-                {showErrorBanner && effectiveError ? (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-                    {effectiveError}
-                  </div>
-                ) : null}
-                {activeCategory && selectedSummaryItem ? (
-                  selectedItems.length > 0 ? (
-                    selectedItems.map((item, index) => {
-                      const diffLabel = formatDiffTimestampLabel(item.diffAt);
-                      const badgeLabel = item.typeLabel ?? item.type;
-                      const isUpdatedCategory = activeCategory === "updated";
-                      const beforeDisplay = isUpdatedCategory
-                        ? getDiffDisplay(item.beforeText ?? null)
-                        : null;
-                      const afterDisplay = isUpdatedCategory
-                        ? getDiffDisplay(item.afterText ?? null)
-                        : null;
-                      const changedPaths = Array.isArray(item.changedPaths)
-                        ? item.changedPaths.filter((path) => path && path.length > 0)
-                        : [];
-                      return (
-                        <div
-                          key={`${item.id}-${item.diffAt ?? "unknown"}-${index}`}
-                          className="rounded-lg border border-muted-foreground/40 bg-background/70 px-3 py-3 text-sm shadow-sm"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                {badgeLabel ? (
-                                  <Badge
-                                    variant="outline"
-                                    title={item.type && badgeLabel !== item.type ? item.type : undefined}
-                                  >
-                                    {badgeLabel}
-                                  </Badge>
-                                ) : null}
-                                <span className="font-medium leading-snug">
-                                  {item.title}
-                                </span>
-                              </div>
-                              {item.subtitle ? (
-                                <div className="text-xs text-muted-foreground">
-                                  {item.subtitle}
-                                </div>
+          {showSkeleton ? (
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : blockDetails ? (
+            <div className="rounded-md border border-muted-foreground/40 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
+              {effectiveError}
+            </div>
+          ) : (
+            <>
+              {showErrorBanner && effectiveError ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                  {effectiveError}
+                </div>
+              ) : null}
+              {activeCategory && selectedSummaryItem ? (
+                selectedItems.length > 0 ? (
+                  selectedItems.map((item, index) => {
+                    const diffLabel = formatDiffTimestampLabel(item.diffAt);
+                    const badgeLabel = item.typeLabel ?? item.type;
+                    const isUpdatedCategory = activeCategory === "updated";
+                    const beforeDisplay = isUpdatedCategory
+                      ? getDiffDisplay(item.beforeText ?? null)
+                      : null;
+                    const afterDisplay = isUpdatedCategory
+                      ? getDiffDisplay(item.afterText ?? null)
+                      : null;
+                    const changedPaths = Array.isArray(item.changedPaths)
+                      ? item.changedPaths.filter((path) => path && path.length > 0)
+                      : [];
+                    return (
+                      <div
+                        key={`${item.id}-${item.diffAt ?? "unknown"}-${index}`}
+                        className="rounded-lg border border-muted-foreground/40 bg-background/70 px-3 py-3 text-sm shadow-sm"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              {badgeLabel ? (
+                                <Badge
+                                  variant="outline"
+                                  title={item.type && badgeLabel !== item.type ? item.type : undefined}
+                                >
+                                  {badgeLabel}
+                                </Badge>
                               ) : null}
+                              <span className="font-medium leading-snug">{item.title}</span>
                             </div>
-                            {diffLabel ? (
-                              <div className="text-xs text-muted-foreground whitespace-nowrap">
-                                {diffLabel}
-                              </div>
+                            {item.subtitle ? (
+                              <div className="text-xs text-muted-foreground">{item.subtitle}</div>
                             ) : null}
                           </div>
-                          {isUpdatedCategory ? (
-                            <div className="mt-3 space-y-3">
-                              {changedPaths.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                                  <span className="mr-1 font-medium text-muted-foreground/80">
-                                    変更フィールド:
-                                  </span>
-                                  {changedPaths.map((path) => (
-                                    <Badge
-                                      key={path}
-                                      variant="secondary"
-                                      className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
-                                    >
-                                      {path}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              ) : null}
-                              <div className="grid gap-3 md:grid-cols-2">
-                                <div className="space-y-1">
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    編集前
-                                  </div>
-                                  <div
-                                    className={cn(
-                                      "rounded-md border border-muted-foreground/30 bg-muted/30 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
-                                      beforeDisplay?.isPlaceholder
-                                        ? "italic text-muted-foreground/80"
-                                        : "text-foreground"
-                                    )}
+                          {diffLabel ? (
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">{diffLabel}</div>
+                          ) : null}
+                        </div>
+                        {isUpdatedCategory ? (
+                          <div className="mt-3 space-y-3">
+                            {changedPaths.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                                <span className="mr-1 font-medium text-muted-foreground/80">変更フィールド:</span>
+                                {changedPaths.map((path) => (
+                                  <Badge
+                                    key={path}
+                                    variant="secondary"
+                                    className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
                                   >
-                                    {beforeDisplay?.text}
-                                  </div>
+                                    {path}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : null}
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-1">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  編集前
                                 </div>
-                                <div className="space-y-1">
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    編集後
-                                  </div>
-                                  <div
-                                    className={cn(
-                                      "rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
-                                      afterDisplay?.isPlaceholder
-                                        ? "italic text-emerald-700/70 dark:text-emerald-200/70"
-                                        : "text-emerald-700 dark:text-emerald-200"
-                                    )}
-                                  >
-                                    {afterDisplay?.text}
-                                  </div>
+                                <div
+                                  className={cn(
+                                    "rounded-md border border-muted-foreground/30 bg-muted/30 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                                    beforeDisplay?.isPlaceholder
+                                      ? "italic text-muted-foreground/80"
+                                      : "text-foreground"
+                                  )}
+                                >
+                                  {beforeDisplay?.text}
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  編集後
+                                </div>
+                                <div
+                                  className={cn(
+                                    "rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                                    afterDisplay?.isPlaceholder
+                                      ? "italic text-emerald-700/70 dark:text-emerald-200/70"
+                                      : "text-emerald-700 dark:text-emerald-200"
+                                  )}
+                                >
+                                  {afterDisplay?.text}
                                 </div>
                               </div>
                             </div>
-                          ) : null}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
-                      選択したカテゴリの差分はありません。
-                    </div>
-                  )
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
                 ) : (
-                  <div className="rounded-md border border-dashed border-muted-foreground/40 bg-background/40 px-3 py-6 text-center text-sm text-muted-foreground">
-                    カードを選択すると差分の詳細が表示されます。
+                  <div className="rounded-md border border-dashed border-muted-foreground/40 bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
+                    選択したカテゴリの差分はありません。
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                )
+              ) : (
+                <div className="rounded-md border border-dashed border-muted-foreground/40 bg-background/40 px-3 py-6 text-center text-sm text-muted-foreground">
+                  カードを選択すると差分の詳細が表示されます。
+                </div>
+              )}
+            </>
+          )}
         </div>
+      </div>
     </Card>
   );
 }
