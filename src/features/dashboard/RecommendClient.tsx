@@ -112,6 +112,7 @@ export default function RecommendClient() {
 
   const logs = useMemo(() => logsData ?? [], [logsData]);
   const logsLoading = logsPending || (logsFetching && logs.length === 0);
+  const logsRefreshing = !logsPending && logsFetching;
 
   const data = useMemo(
     () => ({ ...base, groups, timeseries, logs }),
@@ -235,6 +236,7 @@ export default function RecommendClient() {
             loading={recommendationsLoading}
             timeseriesLoading={timeseriesLoading}
             logsLoading={logsLoading}
+            logsRefreshing={logsRefreshing}
             date={selectedDate}
             timeRange={timeRange}
             miroSummary={miroSummary}
