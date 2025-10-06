@@ -277,7 +277,7 @@ function mapUtterancesToConversationLogs({
     const created = new Date(item.created_at);
     const createdMs = created.getTime();
     if (!Number.isFinite(createdMs)) continue;
-    if (createdMs < startMs || createdMs > endMs) continue;
+    if (createdMs < startMs || createdMs >= endMs) continue;
 
     const text =
       typeof item.utterance_text === "string"
@@ -306,7 +306,8 @@ function mapUtterancesToConversationLogs({
     return {
       start: bucketStart,
       end: bucketEnd,
-      label: JST_TIME_FORMATTER.format(new Date(bucketEnd)),
+      labelStart: JST_TIME_FORMATTER.format(new Date(bucketStart)),
+      labelEnd: JST_TIME_FORMATTER.format(new Date(bucketEnd)),
       turns: [] as ConversationLog["turns"],
     };
   });
@@ -329,7 +330,7 @@ function mapUtterancesToConversationLogs({
   return buckets
     .filter((bucket) => bucket.turns.length > 0)
     .map((bucket) => ({
-      timeLabel: bucket.label,
+      timeLabel: `${bucket.labelStart}〜${bucket.labelEnd}`,
       turns: bucket.turns,
     }));
 }
