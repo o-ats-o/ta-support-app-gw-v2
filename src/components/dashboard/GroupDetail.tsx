@@ -14,6 +14,7 @@ import ScenarioPanel from "./ScenarioPanel";
 const STORAGE_KEY_BASE = "groupDetail:activeTab";
 const TAB_ORDER = ["trend", "logs", "scenario", "miro"] as const;
 type TabValue = (typeof TAB_ORDER)[number];
+type TrendSeries = "speech" | "sentiment" | "miroOps";
 
 type Props = {
   data: DashboardData;
@@ -45,6 +46,7 @@ export function GroupDetail({
   onTabChange,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabValue>("trend");
+  const [trendSeries, setTrendSeries] = useState<TrendSeries>("speech");
 
   const storageKey = useMemo(() => {
     if (typeof window === "undefined") {
@@ -143,6 +145,8 @@ export function GroupDetail({
               selected={selected}
               timeseriesLoading={timeseriesLoading}
               defaultSeries="speech"
+              series={trendSeries}
+              onSeriesChange={setTrendSeries}
             />
           ) : (
             renderPlaceholder()

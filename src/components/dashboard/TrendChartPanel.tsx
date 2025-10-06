@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/card";
@@ -10,11 +10,15 @@ const MultiLineChart = dynamic(() => import("./charts/MultiLineChart"), {
   ssr: false,
 });
 
+type SeriesType = "speech" | "sentiment" | "miroOps";
+
 type Props = {
   data: DashboardData;
   groups: GroupInfo[];
   selected: GroupInfo;
-  defaultSeries?: "speech" | "sentiment" | "miroOps";
+  defaultSeries?: SeriesType;
+  series?: SeriesType;
+  onSeriesChange?: (value: SeriesType) => void;
   timeseriesLoading?: boolean;
 };
 
@@ -23,19 +27,35 @@ export default function TrendChartPanel({
   groups,
   selected,
   defaultSeries = "speech",
+  series: controlledSeries,
+  onSeriesChange,
   timeseriesLoading = false,
 }: Props) {
   const colors = Object.fromEntries(groups.map((g) => [g.id, g.color]));
-  const [series, setSeries] = useState<"speech" | "sentiment" | "miroOps">(
+  const [uncontrolledSeries, setUncontrolledSeries] = useState<SeriesType>(
     defaultSeries
   );
   const [onlySelected, setOnlySelected] = useState(false);
+
+  useEffect(() => {
+    if (controlledSeries !== undefined) return;
+    setUncontrolledSeries((prev) => (prev === defaultSeries ? prev : defaultSeries));
+  }, [controlledSeries, defaultSeries]);
+
+  const activeSeries = controlledSeries ?? uncontrolledSeries;
+
+  const handleSeriesChange = (value: SeriesType) => {
+    if (controlledSeries === undefined) {
+      setUncontrolledSeries(value);
+    }
+    onSeriesChange?.(value);
+  };
 
   return (
     <Card className="flex h-full min-h-0 flex-col p-4">
       <div className="font-semibold text-md">時間推移グラフ</div>
       <div className="-mt-3">
-        <ChartSeriesSelector value={series} onChange={setSeries} />
+        <ChartSeriesSelector value={activeSeries} onChange={handleSeriesChange} />
       </div>
 
       <div className="mt-2 flex justify-end mr-4">
@@ -67,10 +87,10 @@ export default function TrendChartPanel({
           </div>
         )}
         <MultiLineChart
-          data={data.timeseries[series]}
+          data={data.timeseries[activeSeries]}
           colors={colors}
           groups={groups}
-          yDomain={series === "sentiment" ? [-1, 1] : undefined}
+          yDomain={activeSeries === "sentiment" ? [-1, 1] : undefined}
           initialHiddenIds={
             // ボタン状態に応じて初期非表示を切替。
             // 「選択グループを表示」= true のときは他を非表示、
