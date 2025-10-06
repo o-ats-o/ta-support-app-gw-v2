@@ -32,8 +32,8 @@ export default function GroupListHeader({
   const timeOptions = useMemo(() => {
     const results: string[] = [];
     const pad2 = (n: number) => n.toString().padStart(2, "0");
-    const startMinutes = 9 * 60; // 9:00
-    const endMinutes = 24 * 60; // 12:00
+  const startMinutes = 10 * 60 + 30; // 10:30
+  const endMinutes = 12 * 60 + 10; // 12:10
     for (let m = startMinutes; m < endMinutes; m += 5) {
       const startHour = Math.floor(m / 60);
       const startMin = m % 60;
