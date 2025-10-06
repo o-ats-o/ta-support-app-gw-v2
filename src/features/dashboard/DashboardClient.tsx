@@ -92,6 +92,7 @@ export default function DashboardClient() {
 
   const logs = useMemo(() => logsData ?? [], [logsData]);
   const logsLoading = logsPending || (logsFetching && logs.length === 0);
+  const logsRefreshing = !logsPending && logsFetching;
 
   const data = useMemo(
     () => ({ ...base, scenario: undefined, groups, timeseries, logs }),
@@ -206,6 +207,7 @@ export default function DashboardClient() {
             loading={groupsLoading}
             timeseriesLoading={timeseriesLoading}
             logsLoading={logsLoading}
+            logsRefreshing={logsRefreshing}
             date={selectedDate}
             timeRange={currentRange}
             miroSummary={miroSummary}
