@@ -1,11 +1,63 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useScenarioQuery } from "@/features/dashboard/useScenarioQuery";
 import type { DashboardData, GroupInfo } from "@/lib/types";
+
+const MARKDOWN_LIST_MARKER_RE = /^\s*(?:[-*+]\s|\d+\.\s)/;
+
+const markdownComponents: Components = {
+  h1: ({ node, ...props }) => (
+    <h2 className="mt-4 text-lg font-semibold text-foreground" {...props} />
+  ),
+  h2: ({ node, ...props }) => (
+    <h3 className="mt-4 text-base font-semibold text-foreground" {...props} />
+  ),
+  h3: ({ node, ...props }) => (
+    <h4 className="mt-3 text-[15px] font-semibold text-foreground" {...props} />
+  ),
+  p: ({ node, ...props }) => (
+    <p className="mb-3 text-[15px] leading-7 text-foreground/90" {...props} />
+  ),
+  ul: ({ node, ...props }) => (
+    <ul
+      className="mb-3 space-y-2 pl-5 text-[15px] leading-7 text-foreground/90 marker:text-emerald-600 list-disc"
+      {...props}
+    />
+  ),
+  ol: ({ node, ...props }) => (
+    <ol
+      className="mb-3 space-y-2 pl-5 text-[15px] leading-7 text-foreground/90 marker:text-emerald-600 list-decimal"
+      {...props}
+    />
+  ),
+  li: ({ node, ...props }) => <li className="leading-7" {...props} />,
+  strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+  em: ({ node, ...props }) => <em className="italic" {...props} />,
+  a: ({ node, ...props }) => (
+    <a className="text-emerald-600 underline underline-offset-2" {...props} />
+  ),
+  blockquote: ({ node, ...props }) => (
+    <blockquote
+      className="mb-3 border-l-2 border-emerald-300/70 pl-3 text-[15px] italic text-foreground/80"
+      {...props}
+    />
+  ),
+  code: ({ node, className, children, ...props }) => (
+    <code
+      className={`rounded bg-emerald-50 px-1 py-0.5 text-[14px] text-emerald-700 ${className ?? ""}`.trim()}
+      {...props}
+    >
+      {children}
+    </code>
+  ),
+};
 
 type Props = {
   data: DashboardData;
@@ -41,15 +93,31 @@ export default function ScenarioPanel({
     windowMinutes,
   });
 
-  const loading = isPending || (isFetching && !scenario);
+  const loading = isPending || isFetching;
 
   const handleRegenerate = useCallback(() => {
     if (!hasTranscript) return;
     void refetch();
   }, [hasTranscript, refetch]);
 
-  const buttonDisabled = !hasTranscript || Boolean(logsLoading) || isPending;
-  const buttonLabel = isPending ? "生成中…" : "再生成";
+  const buttonDisabled =
+    !hasTranscript || Boolean(logsLoading) || isPending || isFetching;
+  const buttonLabel = isPending || isFetching ? "生成中…" : "再生成";
+
+  const markdownContent = useMemo(() => {
+    if (!scenario) return null;
+    const explicit = scenario.markdown?.trim();
+    if (explicit) return explicit;
+    const bulletLines = scenario.bullets
+      .map((bullet) => {
+        const raw = (bullet.markdown ?? bullet.text ?? "").trim();
+        if (!raw) return null;
+        return MARKDOWN_LIST_MARKER_RE.test(raw) ? raw : `- ${raw}`;
+      })
+      .filter((line): line is string => Boolean(line));
+    if (bulletLines.length === 0) return null;
+    return bulletLines.join("\n");
+  }, [scenario]);
 
   let content: React.ReactNode;
   if (logsLoading) {
@@ -84,14 +152,14 @@ export default function ScenarioPanel({
       </div>
     );
   } else if (scenario) {
-    content = (
-      <ul className="space-y-4">
-        {scenario.bullets.map((b, i) => (
-          <li key={i} className="text-[15px] leading-7">
-            ・{b.text}
-          </li>
-        ))}
-      </ul>
+    content = markdownContent ? (
+      <div className="text-[15px] leading-7 text-foreground/90">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {markdownContent}
+        </ReactMarkdown>
+      </div>
+    ) : (
+      <div className="text-sm text-muted-foreground">シナリオがありません</div>
     );
   } else {
     content = (
