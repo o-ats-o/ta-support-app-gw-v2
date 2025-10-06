@@ -20,6 +20,7 @@ type Props = {
   loading?: boolean;
   timeseriesLoading?: boolean;
   logsLoading?: boolean;
+  logsRefreshing?: boolean;
   date?: string;
   timeRange?: string;
   miroSummary?: MiroDiffSummary | null;
@@ -34,6 +35,7 @@ export function GroupDetail({
   loading = false,
   timeseriesLoading,
   logsLoading,
+  logsRefreshing,
   date,
   timeRange,
   miroSummary,
@@ -159,6 +161,7 @@ export function GroupDetail({
               data={data}
               selected={selected}
               loading={Boolean(loading) || Boolean(logsLoading)}
+              refreshing={Boolean(logsRefreshing)}
             />
           ) : (
             renderPlaceholder()
