@@ -839,6 +839,7 @@ type ApiScenarioResponse = {
   title?: unknown;
   error?: unknown;
   message?: unknown;
+  markdown?: unknown;
 };
 
 function splitScenarioText(value: string): string[] {
@@ -966,6 +967,39 @@ export async function generateTalkScenarioFromTranscript(
       ? ((rawScenario as { title: string }).title || "").trim()
       : undefined;
 
+  let markdown: string | undefined;
+  const extractMarkdown = (value: unknown): string | undefined => {
+    if (!value) return undefined;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+    if (Array.isArray(value)) {
+      const combined = value
+        .map((item) => extractMarkdown(item))
+        .filter((item): item is string => Boolean(item))
+        .join("\n\n");
+      return combined.length > 0 ? combined : undefined;
+    }
+    if (typeof value === "object") {
+      const obj = value as {
+        markdown?: unknown;
+        content?: unknown;
+        text?: unknown;
+      };
+      return (
+        extractMarkdown(obj.markdown) ||
+        extractMarkdown(obj.content) ||
+        extractMarkdown(obj.text)
+      );
+    }
+    return undefined;
+  };
+
+  markdown =
+    extractMarkdown(json?.markdown) ??
+    extractMarkdown((rawScenario as { markdown?: unknown })?.markdown);
+
   const candidates = normalizeScenarioBullet(rawScenario);
 
   const bullets = candidates
@@ -979,6 +1013,14 @@ export async function generateTalkScenarioFromTranscript(
     }
   }
 
+  if (!markdown) {
+    if (typeof rawScenario === "string" && rawScenario.trim()) {
+      markdown = rawScenario.trim();
+    } else if (bullets.length > 0) {
+      markdown = bullets.map((line) => `- ${line}`).join("\n");
+    }
+  }
+
   if (bullets.length === 0) {
     throw new Error("Scenario response contained no content");
   }
@@ -987,7 +1029,8 @@ export async function generateTalkScenarioFromTranscript(
 
   return {
     title,
-    bullets: bullets.map((text) => ({ text })),
+    bullets: bullets.map((text) => ({ text, markdown: text })),
+    markdown,
   } satisfies TalkScenario;
 }
 
