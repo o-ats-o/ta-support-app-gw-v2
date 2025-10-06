@@ -63,7 +63,7 @@ export default function ConversationLogs({
   return (
     <Card className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <div className="font-semibold text-base">会話履歴</div>
-      <div className="relative mt-2 flex-1 min-h-[320px]">
+      <div className="relative mt-2 h-[420px]">
         {refreshing && !loading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background/70 backdrop-blur-sm">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
