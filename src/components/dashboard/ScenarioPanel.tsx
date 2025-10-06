@@ -7,49 +7,50 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScenarioQuery } from "@/features/dashboard/useScenarioQuery";
 import type { DashboardData, GroupInfo } from "@/lib/types";
 
 const MARKDOWN_LIST_MARKER_RE = /^\s*(?:[-*+]\s|\d+\.\s)/;
 
 const markdownComponents: Components = {
-  h1: ({ node, ...props }) => (
+  h1: (props) => (
     <h2 className="mt-4 text-lg font-semibold text-foreground" {...props} />
   ),
-  h2: ({ node, ...props }) => (
+  h2: (props) => (
     <h3 className="mt-4 text-base font-semibold text-foreground" {...props} />
   ),
-  h3: ({ node, ...props }) => (
+  h3: (props) => (
     <h4 className="mt-3 text-[15px] font-semibold text-foreground" {...props} />
   ),
-  p: ({ node, ...props }) => (
+  p: (props) => (
     <p className="mb-3 text-[15px] leading-7 text-foreground/90" {...props} />
   ),
-  ul: ({ node, ...props }) => (
+  ul: (props) => (
     <ul
       className="mb-3 space-y-2 pl-5 text-[15px] leading-7 text-foreground/90 marker:text-emerald-600 list-disc"
       {...props}
     />
   ),
-  ol: ({ node, ...props }) => (
+  ol: (props) => (
     <ol
       className="mb-3 space-y-2 pl-5 text-[15px] leading-7 text-foreground/90 marker:text-emerald-600 list-decimal"
       {...props}
     />
   ),
-  li: ({ node, ...props }) => <li className="leading-7" {...props} />,
-  strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
-  em: ({ node, ...props }) => <em className="italic" {...props} />,
-  a: ({ node, ...props }) => (
+  li: (props) => <li className="leading-7" {...props} />,
+  strong: (props) => <strong className="font-semibold" {...props} />,
+  em: (props) => <em className="italic" {...props} />,
+  a: (props) => (
     <a className="text-emerald-600 underline underline-offset-2" {...props} />
   ),
-  blockquote: ({ node, ...props }) => (
+  blockquote: (props) => (
     <blockquote
       className="mb-3 border-l-2 border-emerald-300/70 pl-3 text-[15px] italic text-foreground/80"
       {...props}
     />
   ),
-  code: ({ node, className, children, ...props }) => (
+  code: ({ className, children, ...props }) => (
     <code
       className={`rounded bg-emerald-50 px-1 py-0.5 text-[14px] text-emerald-700 ${className ?? ""}`.trim()}
       {...props}
@@ -168,7 +169,7 @@ export default function ScenarioPanel({
   }
 
   return (
-    <Card className="flex h-full min-h-0 flex-col p-4">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden p-4">
       <div className="flex items-center justify-between">
         <div className="font-semibold text-md mb-2">声かけシナリオ</div>
         <Button
@@ -181,8 +182,10 @@ export default function ScenarioPanel({
           {buttonLabel}
         </Button>
       </div>
-      <div className="mt-4 flex-1 min-h-[300px] overflow-y-auto">
-        {content}
+      <div className="relative mt-4 h-[400px]">
+        <ScrollArea className="h-full pr-2">
+          <div className="pb-2">{content}</div>
+        </ScrollArea>
       </div>
     </Card>
   );
