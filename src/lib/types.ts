@@ -74,11 +74,13 @@ export interface ConversationLog {
 // 声かけシナリオ
 export interface TalkScenarioItem {
   text: string;
+  markdown?: string;
 }
 
 export interface TalkScenario {
   title: string; // 見出し
   bullets: TalkScenarioItem[]; // 箇条書き
+  markdown?: string; // 全体を表現するマークダウン (任意)
 }
 
 export function createEmptyTimeseries(): DashboardData["timeseries"] {
