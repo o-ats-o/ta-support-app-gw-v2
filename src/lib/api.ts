@@ -363,6 +363,115 @@ function sanitizeMiroDeletedItem(
   return { id, type };
 }
 
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function normalizeMiroId(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return undefined;
+}
+
+function normalizeMiroType(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function normalizeChangedPaths(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const results = value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item) => item.length > 0);
+  return results.length > 0 ? results : [];
+}
+
+function pickString(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+}
+
+function sanitizeMiroUpdatedItem(
+  entry: unknown
+): MiroDiffRecord["updated"][number] | null {
+  const obj = toRecord(entry);
+  if (!obj) return null;
+
+  const rawBefore =
+    toRecord((obj as { before?: unknown; before_data?: unknown }).before) ??
+    toRecord((obj as { before_data?: unknown }).before_data);
+  const rawAfter =
+    toRecord((obj as { after?: unknown; after_data?: unknown }).after) ??
+    toRecord((obj as { after_data?: unknown }).after_data);
+
+  const rawId =
+    normalizeMiroId((obj as { id?: unknown }).id) ??
+    (rawAfter ? normalizeMiroId((rawAfter as { id?: unknown }).id) : undefined) ??
+    (rawBefore ? normalizeMiroId((rawBefore as { id?: unknown }).id) : undefined);
+  if (!rawId) {
+    return null;
+  }
+
+  const rawType =
+    normalizeMiroType((obj as { type?: unknown }).type) ??
+    (rawAfter ? normalizeMiroType((rawAfter as { type?: unknown }).type) : undefined) ??
+    (rawBefore ? normalizeMiroType((rawBefore as { type?: unknown }).type) : undefined);
+
+  const beforeText =
+    pickString((obj as { beforeText?: unknown }).beforeText) ??
+    pickString((obj as { before_text?: unknown }).before_text);
+  const afterText =
+    pickString((obj as { afterText?: unknown }).afterText) ??
+    pickString((obj as { after_text?: unknown }).after_text);
+
+  const changedPaths =
+    normalizeChangedPaths((obj as { changedPaths?: unknown }).changedPaths) ??
+    normalizeChangedPaths((obj as { changed_paths?: unknown }).changed_paths);
+
+  const base: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key === "before" || key === "before_data" || key === "after" || key === "after_data") {
+      continue;
+    }
+    if (key === "beforeText" || key === "before_text" || key === "afterText" || key === "after_text") {
+      continue;
+    }
+    if (key === "changedPaths" || key === "changed_paths") {
+      continue;
+    }
+    base[key] = value;
+  }
+
+  if (rawType) {
+    base.type = rawType;
+  }
+
+  base.id = rawId;
+
+  const normalizedAfter = rawAfter ?? base;
+
+  return {
+    ...base,
+    before: rawBefore ?? null,
+    after: normalizedAfter,
+    beforeText,
+    afterText,
+    changedPaths: changedPaths ?? undefined,
+  } as MiroDiffRecord["updated"][number];
+}
+
 function mapApiMiroDiff(input: ApiMiroDiff | null | undefined): MiroDiffRecord | null {
   if (!input) return null;
   const boardIdRaw =
@@ -385,7 +494,7 @@ function mapApiMiroDiff(input: ApiMiroDiff | null | undefined): MiroDiffRecord |
     : [];
   const updated = Array.isArray(input.updated)
     ? input.updated
-        .map(sanitizeMiroItem)
+        .map(sanitizeMiroUpdatedItem)
         .filter((v): v is MiroDiffRecord["updated"][number] => Boolean(v))
     : [];
   const deleted = Array.isArray(input.deleted)

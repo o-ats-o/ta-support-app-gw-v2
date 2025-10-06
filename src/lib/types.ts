@@ -100,11 +100,19 @@ export type MiroDeletedItem = {
   type?: string;
 };
 
+export type MiroUpdatedDiffEntry = MiroItem & {
+  before?: MiroItem | null;
+  after?: MiroItem | null;
+  beforeText?: string | null;
+  afterText?: string | null;
+  changedPaths?: string[];
+};
+
 export type MiroDiffRecord = {
   boardId: string;
   diffAt: string;
   added: MiroItem[];
-  updated: MiroItem[];
+  updated: MiroUpdatedDiffEntry[];
   deleted: MiroDeletedItem[];
 };
 
@@ -125,6 +133,11 @@ export type MiroDiffSummaryDetail = {
   subtitle?: string;
   diffAt?: string;
   link?: string;
+  beforeText?: string | null;
+  afterText?: string | null;
+  beforeData?: Record<string, unknown> | null;
+  afterData?: Record<string, unknown> | null;
+  changedPaths?: string[];
 };
 
 export type MiroDiffSummaryDetails = {

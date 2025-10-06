@@ -72,6 +72,13 @@ type InternalDetail = MiroDiffSummaryDetail & { timestampMs: number };
 const HTML_TAG_RE = /<[^>]+>/g;
 const WHITESPACE_RE = /\s+/g;
 
+function asPlainRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
 function sanitizeRichText(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -202,6 +209,94 @@ function buildDetailFromItem(
   };
 }
 
+function sanitizeDiffTextCandidate(
+  explicit: unknown,
+  fallback: Record<string, unknown> | null | undefined
+): string | null {
+  if (typeof explicit === "string") {
+    const sanitized = sanitizeRichText(explicit);
+    if (sanitized) {
+      return sanitized;
+    }
+    if (explicit.trim().length === 0) {
+      return "";
+    }
+  }
+
+  if (fallback) {
+    const extracted = extractItemText(fallback);
+    if (extracted != null) {
+      const sanitized = sanitizeRichText(extracted);
+      if (sanitized) {
+        return sanitized;
+      }
+      if (extracted.trim().length === 0) {
+        return "";
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildDetailFromUpdatedEntry(
+  entry: MiroDiffRecord["updated"][number],
+  diffAt: string,
+  diffMs: number
+): InternalDetail | null {
+  const beforeData = asPlainRecord(entry.before) ?? null;
+  const afterData = asPlainRecord(entry.after) ?? null;
+  const baseSource = afterData ?? beforeData ?? asPlainRecord(entry);
+
+  const source: Record<string, unknown> | null = baseSource
+    ? { ...baseSource }
+    : entry && typeof entry === "object"
+    ? ({ ...(entry as Record<string, unknown>) } as Record<string, unknown>)
+    : null;
+
+  if (!source) {
+    return null;
+  }
+
+  if (!normalizeId((source as { id?: unknown }).id)) {
+    const normalizedId = normalizeId((entry as { id?: unknown }).id);
+    if (!normalizedId) {
+      return null;
+    }
+    source.id = normalizedId;
+  }
+
+  const entryType = (entry as { type?: unknown }).type;
+  const sourceType = (source as { type?: unknown }).type;
+  if (!sourceType && typeof entryType === "string" && entryType.trim().length > 0) {
+    source.type = entryType;
+  }
+
+  const baseDetail = buildDetailFromItem(source, diffAt, diffMs);
+  if (!baseDetail) {
+    return null;
+  }
+
+  const computedBeforeText = sanitizeDiffTextCandidate(entry.beforeText, beforeData);
+  const computedAfterText = sanitizeDiffTextCandidate(
+    entry.afterText,
+    afterData ?? source
+  );
+
+  const paths = Array.isArray(entry.changedPaths)
+    ? entry.changedPaths.filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+    : undefined;
+
+  return {
+    ...baseDetail,
+    beforeText: computedBeforeText,
+    afterText: computedAfterText,
+    beforeData: beforeData,
+    afterData: afterData ?? source,
+    changedPaths: paths,
+  };
+}
+
 export function computeMiroRange(
   date?: string,
   timeRange?: string
@@ -271,11 +366,7 @@ export function buildMiroSummary(
 
     if (Array.isArray(diff.updated)) {
       for (const item of diff.updated) {
-        const detail = buildDetailFromItem(
-          item as unknown as Record<string, unknown>,
-          diff.diffAt,
-          diffMs
-        );
+        const detail = buildDetailFromUpdatedEntry(item, diff.diffAt, diffMs);
         if (detail) {
           detailBuckets.updated.push(detail);
         }
@@ -319,7 +410,10 @@ export function buildMiroSummary(
     list
       .slice()
       .sort((a, b) => b.timestampMs - a.timestampMs)
-      .map(({ timestampMs: _timestamp, ...rest }) => rest);
+      .map(({ timestampMs, ...rest }) => {
+        void timestampMs;
+        return rest;
+      });
 
   return {
     added,

@@ -145,11 +145,24 @@ export default function MiroWorkDetail({
   const blockDetails = Boolean(effectiveError) && summary == null;
   const showErrorBanner = Boolean(effectiveError) && summary != null;
 
+  const getDiffDisplay = (value: string | null | undefined) => {
+    if (value == null) {
+      return { text: "（不明）", isPlaceholder: true } as const;
+    }
+    if (value.length === 0) {
+      return { text: "（空欄）", isPlaceholder: true } as const;
+    }
+    return { text: value, isPlaceholder: false } as const;
+  };
+
   return (
     <Card className="flex h-full min-h-0 flex-col p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-base">Miro作業量詳細</div>
+          <div className="text-xs text-muted-foreground">
+            対象: {selected.name}
+          </div>
           <div className="text-sm text-muted-foreground">
             総数: {baseSummary.total}件
           </div>
@@ -277,6 +290,16 @@ export default function MiroWorkDetail({
                     selectedItems.map((item, index) => {
                       const diffLabel = formatDiffTimestampLabel(item.diffAt);
                       const badgeLabel = item.typeLabel ?? item.type;
+                      const isUpdatedCategory = activeCategory === "updated";
+                      const beforeDisplay = isUpdatedCategory
+                        ? getDiffDisplay(item.beforeText ?? null)
+                        : null;
+                      const afterDisplay = isUpdatedCategory
+                        ? getDiffDisplay(item.afterText ?? null)
+                        : null;
+                      const changedPaths = Array.isArray(item.changedPaths)
+                        ? item.changedPaths.filter((path) => path && path.length > 0)
+                        : [];
                       return (
                         <div
                           key={`${item.id}-${item.diffAt ?? "unknown"}-${index}`}
@@ -309,6 +332,58 @@ export default function MiroWorkDetail({
                               </div>
                             ) : null}
                           </div>
+                          {isUpdatedCategory ? (
+                            <div className="mt-3 space-y-3">
+                              {changedPaths.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                                  <span className="mr-1 font-medium text-muted-foreground/80">
+                                    変更フィールド:
+                                  </span>
+                                  {changedPaths.map((path) => (
+                                    <Badge
+                                      key={path}
+                                      variant="secondary"
+                                      className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
+                                    >
+                                      {path}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : null}
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div className="space-y-1">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    編集前
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "rounded-md border border-muted-foreground/30 bg-muted/30 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                                      beforeDisplay?.isPlaceholder
+                                        ? "italic text-muted-foreground/80"
+                                        : "text-foreground"
+                                    )}
+                                  >
+                                    {beforeDisplay?.text}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    編集後
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                                      afterDisplay?.isPlaceholder
+                                        ? "italic text-emerald-700/70 dark:text-emerald-200/70"
+                                        : "text-emerald-700 dark:text-emerald-200"
+                                    )}
+                                  >
+                                    {afterDisplay?.text}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })
