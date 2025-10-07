@@ -1,93 +1,117 @@
+# TA Support App Gateway v2
+
 ## プロジェクト概要
 
-**TA Support App Gateway v2** は，グループワークに従事するTAを支援するダッシュボードアプリケーションです．学習者の会話をもとにした，グループワークの可視化を行い，グループ単位での状況把握の支援をします．
+**TA Support App Gateway v2** は，TA（Teaching Assistant）がグループワークの進行状況を素早く把握し，適切な声かけやフォローを行えるよう支援するダッシュボードアプリケーションです。音声認識ログや Miro の作業履歴など複数のデータソースを集約し，グループ単位の学習状況を一つの画面で俯瞰できるようにします。
 
-主要な機能:
+主な機能は以下のとおりです。
 
-- グループ/シナリオごとのログと進捗の可視化
-- 推薦グループの一覧表示と詳細
-- Recharts を利用したトレンドグラフや指標の可視化
-- Shadcn UI + Radix UI をベースとしたモダンな UI コンポーネント群
+- **グループ一覧ビュー (`/list-ver`)**: 発話回数・感情スコア・Miro 操作量などの統合指標を一覧で確認し，任意のグループを詳細表示へ切り替え。
+- **推薦ビュー (`/recommend-ver`)**: リスクの高い／注視すべきグループをスコア順に提示し，推薦理由とともに優先度を可視化。
+- **グループ詳細ペイン**: 時系列トレンド，最新の会話ログ，ログから自動生成される声かけシナリオ，Miro の変更サマリーをタブ切り替えで確認。
+- **リアクティブなデータ取得**: 選択した日付・時間帯・グループに応じたデータを React Query でフェッチし，ローカルストレージに選択状態を保存して再訪問時も継続。
 
-## リポジトリ構造
+## アーキテクチャ概要
+
+- **ルーティング**: Next.js App Router を採用し，`src/app/list-ver/page.tsx` と `src/app/recommend-ver/page.tsx` がダッシュボードのエントリーポイントです。ルート (`page.tsx`) は空ページとして存在します。
+- **グローバル状態管理**: `src/app/providers.tsx` で `@tanstack/react-query` の `QueryClientProvider` を用意し，クエリキャッシュ・リトライ・スタレタイムなどの共通設定を集中管理しています。
+- **API クライアント層**: `src/lib/api.ts` に REST API 呼び出し・レスポンス正規化・エラーハンドリングを一括実装。会話ログ・グループ指標・推薦・時系列・Miro 差分・シナリオ生成などのエンドポイントをカバーします。
+- **ユースケース Hook**: `src/features/dashboard` 配下には `useGroupsQuery`, `useTimeseriesQuery`, `useConversationLogsQuery`, `useRecommendationsQuery`, `useScenarioQuery`, `useMiroSummaryManager` といった Hook 群があり，画面に必要なデータ取得・下準備・キャッシュキー組み立てを担います。
+- **UI レイヤー**: `src/components/dashboard` でダッシュボード固有の表示ロジックを整理し，共通 UI は `src/components/ui` に配置。Tailwind CSS + shadcn/ui + Radix UI を基盤に，動的チャートは Recharts をラップした `MultiLineChart` コンポーネントで描画します。
+- **API プロキシ**: `src/app/api/worker/[...path]/route.ts` が Cloudflare Workers など外部 API へのリバースプロキシを実装し，フロントエンドからのアクセス先を統一しています。
+- **テーマ管理**: `src/components/theme-provider.tsx` で `next-themes` を利用し，現状はライトテーマ固定で提供しています。
+
+### 主なディレクトリ
 
 ```text
 ta-support-app-gw-v2/
-├── public/                     # 画像やアイコンなどの静的アセット
+├── public/                 # 画像やSVGなどの静的アセット
 ├── src/
-│   ├── app/                    # App Router のルーティングとページ
-│   │   ├── page.tsx            # ルートトップページ
-│   │   ├── list-ver/           # グループ一覧ビュー
-│   │   └── recommend-ver/      # 推薦ビュー
+│   ├── app/                # Next.js App Router のページとAPIルート
+│   │   ├── list-ver/       # グループ一覧ダッシュボード
+│   │   ├── recommend-ver/  # 推薦ダッシュボード
+│   │   └── api/worker/     # 外部APIへのリバースプロキシ
 │   ├── components/
-│   │   ├── dashboard/          # ダッシュボード専用 UI コンポーネント
-│   │   └── ui/                 # 共通 UI コンポーネント (shadcn/ui ベース)
-│   ├── features/
-│   │   └── dashboard/          # ダッシュボード機能に関するロジックと hooks
-│   └── lib/                    # API クライアント、型定義、ユーティリティ
-├── package.json
-├── pnpm-lock.yaml
-├── pnpm-workspace.yaml
-├── next.config.ts
-└── README.md
+│   │   ├── dashboard/      # ダッシュボード専用UI (詳細ペイン、シナリオ等)
+│   │   └── ui/             # 共通UI部品 (ボタン、カード、ダイアログなど)
+│   ├── features/dashboard/ # React Query Hooks・Miro集計ロジックなど
+│   └── lib/                # APIクライアント、型定義、ユーティリティ、モック
+├── eslint.config.mjs       # ESLint 設定
+├── next.config.ts          # Next.js 設定
+├── package.json            # スクリプトと依存関係
+└── pnpm-lock.yaml          # 依存関係ロックファイル
 ```
 
-上記以外にも ESLint/Tailwind の設定ファイルや `tsconfig.json`、`src/app/api/worker/[...path]/route.ts` などの API ルートが含まれています。
+## 主要な技術スタック
 
-## 技術スタック
+- **フレームワーク**: Next.js 15 (App Router) / React 19 / TypeScript 5
+- **データ取得**: Axios + @tanstack/react-query（再検証・キャッシュ共通化）
+- **UI & スタイリング**: Tailwind CSS 4, shadcn/ui, Radix UI, lucide-react
+- **チャート**: Recharts をベースにした `MultiLineChart`
+- **マークダウンレンダリング**: `react-markdown` + `remark-gfm`
+- **その他ユーティリティ**: date-fns, zod, class-variance-authority, tailwind-merge
+- **品質管理**: ESLint 9, Prettier 3, TypeScript strict 型付け
 
-- **フレームワーク**: Next.js 15 (App Router) + React 19 + TypeScript 5
-- **UI/スタイリング**: Tailwind CSS 4、Radix UI、shadcn/ui コンポーネント、lucide-react アイコン
-- **データフェッチ**: Axios、@tanstack/react-query
-- **可視化**: Recharts
-- **ユーティリティ**: date-fns、zod、class-variance-authority など
-- **品質管理**: ESLint、Prettier
+## 画面とデータフローの詳細
 
-## ローカル環境構築
+| タブ / 機能 | 取得データ | 主なコンポーネント / Hook | 補足 |
+| --- | --- | --- | --- |
+| グループ一覧 | `fetchGroupsByRange` | `GroupList`, `useGroupsQuery` | 時間帯セレクタ (`GroupListHeader`) の選択値をローカルストレージに保存。 |
+| 推薦グループ | `fetchGroupRecommendationsByRange` | `RecommendGroupList`, `useRecommendationsQuery` | 優先観察すべきグループに警告アイコン・スコアを表示。 |
+| 時間推移グラフ | `fetchGroupTimeseriesByRange` | `TrendChartPanel`, `MultiLineChart`, `useTimeseriesQuery` | 指標切替（発話 / 感情 / Miro）と「選択グループのみ表示」トグルを提供。 |
+| 会話ログ | `fetchGroupConversationLogsByRange` | `ConversationLogs`, `useConversationLogsQuery` | バケット分割した会話履歴をスクロール表示。 |
+| 声かけシナリオ | `generateTalkScenarioFromTranscript` | `ScenarioPanel`, `useScenarioQuery` | 指定時間帯の会話ログをテキスト化し，Markdown でシナリオを生成。再生成ボタン付き。 |
+| Miro 差分 | `fetchMiroDiffsForGroup` | `MiroWorkDetail`, `useMiroSummaryManager`, `miroSummary.ts` | 変更カテゴリ別の要約・割合・詳細を表示し，他グループの差分もバックグラウンドでプリフェッチ。 |
 
-推奨動作環境: Node.js 20 LTS 以上、pnpm 9 系。
+各 Hook では「日付」「時間帯」「グループ ID」をキーとして React Query のキャッシュを構築し，プリフェッチや再取得 (`invalidateQueries`) を適切に行うことで UI の応答性を高めています。ローカルストレージには選択グループ・日付・タブ位置・時間帯を保持し，ページ再訪時も文脈を維持します。
 
-1. 依存パッケージをインストールします。
+## 環境変数
 
+| 変数名 | 用途 | 必須 | 備考 |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | フロントエンドから呼び出す公開 API ベース URL | ✅ | 末尾 `/` 推奨。未設定の場合 `src/lib/api.ts` で明示的にエラーになります。 |
+| `API_BASE_URL` | `/api/worker/*` プロキシの転送先 URL | ✅ | 認証付き Worker / API を想定。サーバーサイドのみで参照。 |
+
+`.env.example` を元に `.env.local` を作成し，上記値をセットしてください。URL はプロトコル付きで設定し，ステージング / 本番では Vercel 環境変数 (Preview/Production) に同じキーで登録します。
+
+## ローカル開発手順
+
+推奨環境: Node.js 20 LTS 以上 / pnpm 9 系。
+
+1. 依存パッケージをインストール
    ```bash
    pnpm install
    ```
-
-2. 環境変数を設定します。`.env.example` をコピーして `.env.local` を作成し、API エンドポイントなどの値を入力してください。
-
+2. 環境変数ファイルを作成
    ```bash
    cp .env.example .env.local
    ```
-
-   `NEXT_PUBLIC_API_BASE_URL` などの URL は末尾に `/` を付けてください。
-
-3. 開発サーバーを起動します。
-
+   必要に応じて `NEXT_PUBLIC_API_BASE_URL` と `API_BASE_URL` を編集します。
+3. 開発サーバーを起動（Turbopack 使用）
    ```bash
    pnpm dev
    ```
+   ブラウザで `http://localhost:3000/list-ver` または `http://localhost:3000/recommend-ver` を開くとダッシュボードを確認できます。
 
-   ブラウザで [http://localhost:3000/list-ver](http://localhost:3000/list-ver) または， [http://localhost:3000/recommend-ver](http://localhost:3000/recommend-ver)を開くとアプリを確認できます。`src/app` 以下のファイルを更新するとホットリロードされます。
+## 利用可能なスクリプト
 
-4. その他の便利なスクリプト:
-   - `pnpm build`: Vercel 本番相当のビルドを実行します。
-   - `pnpm start`: ビルド済みアプリをローカルでサーブします。
-   - `pnpm lint:fix`: ESLint による静的解析と自動修正を実行します。
-   - `pnpm format`: Prettier によるコード整形を実行します。
+| コマンド | 説明 |
+| --- | --- |
+| `pnpm dev` | 開発サーバーを起動 (Turbopack)。 |
+| `pnpm build` | 本番ビルドを実行 (Turbopack)。 |
+| `pnpm start` | ビルド済みアプリをローカルで起動。 |
+| `pnpm lint:fix` | ESLint による静的解析と自動修正。 |
+| `pnpm format` | Prettier によるコード整形。 |
 
-## Vercel でのデプロイ
+## デプロイメント
 
-このリポジトリは Vercel によって自動デプロイされます。基本的な運用フローは以下の通りです。
+- `main` ブランチへのマージをトリガーに Vercel が自動ビルド・デプロイを実行します。
+- プレビュー環境は Pull Request 作成時に自動生成されます。
+- 環境変数 (`NEXT_PUBLIC_API_BASE_URL`, `API_BASE_URL`) は Vercel ダッシュボードの **Settings > Environment Variables** で Preview / Production 両方に設定してください。
 
-1. GitHub の `main` ブランチに変更をマージすると、Vercel が自動的にビルドとデプロイを実行します。
-2. プレビュー環境が必要な場合は、Pull Request 作成時に Vercel が自動生成するプレビューデプロイ URL を利用できます。
-3. 環境変数 (`NEXT_PUBLIC_API_BASE_URL` など) は Vercel プロジェクトの **Settings > Environment Variables** から管理してください。ローカルと同じ値を `Preview` と `Production` に設定することで、環境間の挙動をそろえられます。
-4. ビルドコマンドには `pnpm install` と `pnpm build` が使用され、出力ディレクトリは Next.js App Router のデフォルト設定で Vercel によって処理されます。
+## 補足メモ
 
-Vercel 上でのログやデプロイの詳細は、Vercel ダッシュボードから確認できます。
-
-## 参考リンク
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Vercel Documentation](https://vercel.com/docs)
-- [TanStack Query](https://tanstack.com/query/latest)
+- `src/lib/mock.ts` にはダッシュボード表示に必要なモックデータを同梱しており，API レスポンスが空でも UI が破綻しないよう初期値として活用しています。
+- `usePersistentDate` Hook を通じて日付選択がローカルストレージに保存されるため，複数タブでも最新状態を共有できます。
+- Chart 表示は SSR を無効化した dynamic import (`ssr: false`) でレンダリングしています。ビルド時にクライアント専用コードとして扱われる点に注意してください。
+- 今後自動テストを追加する場合は，React Testing Library + Playwright 等で主要フローの E2E チェックを整備するのが推奨です。
