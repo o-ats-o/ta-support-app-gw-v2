@@ -111,7 +111,7 @@ ta-support-app-gw-v2/
 
 ## 補足メモ
 
-- `src/lib/mock.ts` にはダッシュボード表示に必要なモックデータを同梱しており，API レスポンスが空でも UI が破綻しないよう初期値として活用しています。
+- `src/lib/mock.ts` は画面レイアウトの把握や Storybook 代替として利用できる静的サンプルデータを持ちますが，実行時は React Query で取得した API レスポンスのみを描画に使用します。
 - `usePersistentDate` Hook を通じて日付選択がローカルストレージに保存されるため，複数タブでも最新状態を共有できます。
 - Chart 表示は SSR を無効化した dynamic import (`ssr: false`) でレンダリングしています。ビルド時にクライアント専用コードとして扱われる点に注意してください。
 - 今後自動テストを追加する場合は，React Testing Library + Playwright 等で主要フローの E2E チェックを整備するのが推奨です。
