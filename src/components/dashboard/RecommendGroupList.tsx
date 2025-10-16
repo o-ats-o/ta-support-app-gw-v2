@@ -24,20 +24,24 @@ function Metric({
   label,
   value,
   delta,
+  formatDelta,
 }: {
   label: string;
   value: string;
   delta?: number;
+  formatDelta?: (value: number) => string;
 }) {
   const hasDelta = typeof delta === "number" && !Number.isNaN(delta);
   const isPositive = hasDelta && delta! > 0;
   const isNegative = hasDelta && delta! < 0;
+  const formatDeltaValue = (val: number) =>
+    formatDelta ? formatDelta(val) : `${val}`;
   const deltaText = !hasDelta
     ? null
     : isPositive
-      ? `+${delta}`
+      ? `+${formatDeltaValue(delta!)}`
       : isNegative
-        ? `${delta}`
+        ? `${formatDeltaValue(delta!)}`
         : "±0";
   const deltaClass = isPositive
     ? "text-emerald-600"
@@ -121,6 +125,7 @@ function GroupRow({
           label="感情"
           value={group.metrics.sentimentAvg.toFixed(2)}
           delta={group.metrics.sentimentDelta}
+          formatDelta={(value) => value.toFixed(2)}
         />
         <Metric
           label="Miro"
